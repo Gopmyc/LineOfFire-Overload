@@ -1,18 +1,5 @@
 ---@class Class : Behaviour
-local Class	= {
-	__index	= function(self, sKey)
-		local mValue	= rawget(self, sKey)
-		if mValue ~= nil then return mValue end
-
-		local tPrivate	= rawget(self, "_private")
-		if tPrivate then
-			local mPrivateValue	= rawget(tPrivate, sKey)
-			if mPrivateValue ~= nil then return mPrivateValue end
-		end
-
-		return rawget(Class, sKey)
-	end,
-}
+local Class	= {}
 
 function Class:Clamp(nValue, nMin, nMax)
 	local nClampedMin	= nValue < nMin and nMin or nValue
@@ -38,6 +25,19 @@ function Class:FindActorByNameRecursive(oCurrentActor, sActorName)
 	end
 
 	return nil
+end
+
+Class.__index	= function(self, sKey)
+	local mValue	= rawget(self, sKey)
+	if mValue ~= nil then return mValue end
+
+	local tPrivate	= rawget(self, "_private")
+	if tPrivate then
+		local mPrivateValue	= rawget(tPrivate, sKey)
+		if mPrivateValue ~= nil then return mPrivateValue end
+	end
+
+	return rawget(Class, sKey)
 end
 
 return Class
