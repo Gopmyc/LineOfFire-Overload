@@ -5,34 +5,36 @@ local Crouch	=
 	CROUCH_SPEED_MULTIPLIER		= 0.55,
 	CROUCH_CHECK_SKIN			= 0.01,
 	CROUCH_CHECK_MARGIN			= 0.02,
-	oPhysicalCapsule			= nil,
 
 	_private	=
 	{
+		oTransform				= nil,
+		oPhysicalCapsule		= nil,
 		bIsCrouching			= false,
 		nStandingHeight			= 0.0,
 		nCrouchingHeight		= 0.0,
-		nCurrentSpeedMultiplier	= 1.0
+		nCurrentSpeedMultiplier	= 1.0,
 	}
 }
 
 function Crouch:OnAwake()
 	local oPhysicalCapsule			= self.owner:GetPhysicalCapsule()
 
-	self							= setmetatable(self,  self.owner:GetBehaviour("Class"))
-	self.oPhysicalCapsule			= oPhysicalCapsule
-	self.nStandingHeight			= oPhysicalCapsule:GetHeight()
-	self.nCrouchingHeight			= self.nStandingHeight * self.CROUCH_HEIGHT_MULTIPLIER
-	self.nCurrentSpeedMultiplier	= 1.0
+	self								= setmetatable(self,  self.owner:GetBehaviour("Class"))
+	self._private.oTransform			= self.owner:GetTransform()
+	self._private.oPhysicalCapsule		= oPhysicalCapsule
+	self._private.nStandingHeight		= oPhysicalCapsule:GetHeight()
+	self._private.nCrouchingHeight		= self._private.nStandingHeight * self.CROUCH_HEIGHT_MULTIPLIER
+	self._private.nCurrentSpeedMultiplier	= 1.0
 end
 
 function Crouch:OnFixedUpdate(nFixedDeltaTime)
-	self:HandleCrouch(nFixedDeltaTime)
+	self:HandleCrouch()
 end
 
-function Crouch:HandleCrouch(nFixedDeltaTime)
+function Crouch:HandleCrouch()
 	local bWantsCrouch	= Inputs.GetKey(Key.LEFT_CONTROL)
-	local bIsCrouching	= self.bIsCrouching
+	local bIsCrouching	= self._private.bIsCrouching
 
 	if bWantsCrouch and not bIsCrouching then
 		self:EnterCrouch()
@@ -44,9 +46,9 @@ function Crouch:HandleCrouch(nFixedDeltaTime)
 end
 
 function Crouch:CanExitCrouch()
-	local oPhysicalCapsule		= self.oPhysicalCapsule
-	local oTransform			= self.owner:GetTransform()
-	local nStandingHeight		= self.nStandingHeight
+	local oPhysicalCapsule		= self._private.oPhysicalCapsule
+	local oTransform			= self._private.oTransform
+	local nStandingHeight		= self._private.nStandingHeight
 	local nCurrentHeight		= oPhysicalCapsule:GetHeight()
 	local nRadius				= oPhysicalCapsule:GetRadius()
 	local nCurrentTopOffset		= (nCurrentHeight * 0.5) + nRadius
@@ -93,22 +95,22 @@ function Crouch:ResolveHitActor(oHitObject)
 end
 
 function Crouch:EnterCrouch()
-	self:SetCapsuleHeight(self.nCrouchingHeight)
+	self:SetCapsuleHeight(self._private.nCrouchingHeight)
 
-	self.bIsCrouching				= true
-	self.nCurrentSpeedMultiplier	= self.CROUCH_SPEED_MULTIPLIER
+	self._private.bIsCrouching			= true
+	self._private.nCurrentSpeedMultiplier	= self.CROUCH_SPEED_MULTIPLIER
 end
 
 function Crouch:ExitCrouch()
-	self:SetCapsuleHeight(self.nStandingHeight)
+	self:SetCapsuleHeight(self._private.nStandingHeight)
 
-	self.bIsCrouching				= false
-	self.nCurrentSpeedMultiplier	= 1.0
+	self._private.bIsCrouching			= false
+	self._private.nCurrentSpeedMultiplier	= 1.0
 end
 
 function Crouch:SetCapsuleHeight(nTargetHeight)
-	local oPhysicalCapsule	= self.oPhysicalCapsule
-	local oTransform		= self.owner:GetTransform()
+	local oPhysicalCapsule	= self._private.oPhysicalCapsule
+	local oTransform		= self._private.oTransform
 
 	local nCurrentHeight	= oPhysicalCapsule:GetHeight()
 	local nHeightDelta		= nTargetHeight - nCurrentHeight
@@ -124,11 +126,11 @@ function Crouch:SetCapsuleHeight(nTargetHeight)
 end
 
 function Crouch:GetSpeedMultiplier()
-	return self.nCurrentSpeedMultiplier
+	return self._private.nCurrentSpeedMultiplier
 end
 
 function Crouch:IsCrouching()
-	return self.bIsCrouching
+	return self._private.bIsCrouching
 end
 
 return Crouch

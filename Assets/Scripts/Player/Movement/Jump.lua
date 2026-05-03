@@ -3,26 +3,26 @@ local Jump	=
 {
 	JUMP_VELOCITY				= 8.5,
 	MAX_GROUNDED_ABS_Y_VELOCITY	= 1.0,
-	oPhysicalCapsule			= nil,
 
 	_private	=
 	{
+		oPhysicalCapsule		= nil,
 		tGroundContacts			= {},
 		nGroundContactCount		= 0,
 	}
 }
 
 function Jump:OnAwake()
-	self					= setmetatable(self,  self.owner:GetBehaviour("Class"))
-	self.oPhysicalCapsule	= self.owner:GetPhysicalCapsule()
+	self							= setmetatable(self,  self.owner:GetBehaviour("Class"))
+	self._private.oPhysicalCapsule	= self.owner:GetPhysicalCapsule()
 end
 
 function Jump:OnFixedUpdate(nFixedDeltaTime)
-	self:HandleJump(nFixedDeltaTime)
+	self:HandleJump()
 end
 
-function Jump:HandleJump(nFixedDeltaTime)
-	local oPhysicalCapsule	= self.oPhysicalCapsule
+function Jump:HandleJump()
+	local oPhysicalCapsule	= self._private.oPhysicalCapsule
 	local bWantsToJump		= Inputs.GetKeyDown(Key.SPACE)
 	local bCanJump			= self:IsGrounded()
 
@@ -35,7 +35,7 @@ function Jump:HandleJump(nFixedDeltaTime)
 end
 
 function Jump:IsGrounded()
-	local oPhysicalCapsule		= self.oPhysicalCapsule
+	local oPhysicalCapsule		= self._private.oPhysicalCapsule
 	local nGroundContactCount	= self._private.nGroundContactCount
 	local nVerticalVelocity		= oPhysicalCapsule:GetLinearVelocity().y
 	local nAbsVerticalVelocity	= nVerticalVelocity < 0 and -nVerticalVelocity or nVerticalVelocity
