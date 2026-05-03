@@ -16,7 +16,7 @@
                         <data>
                             <position>
                                 <x>0</x>
-                                <y>3</y>
+                                <y>0</y>
                                 <z>0</z>
                             </position>
                             <rotation>
@@ -59,7 +59,7 @@
                         <data>
                             <position>
                                 <x>0</x>
-                                <y>0</y>
+                                <y>3</y>
                                 <z>0</z>
                             </position>
                             <rotation>
