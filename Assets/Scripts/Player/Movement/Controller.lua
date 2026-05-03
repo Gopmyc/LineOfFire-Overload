@@ -54,8 +54,8 @@ function Controller:GetInputDirection(oTransform)
 	local vForward		= oTransform:GetForward()
 	local vRight		= oTransform:GetRight()
 
-	if Inputs.GetKey(self.LEFT_KEY) or Inputs.GetKey(self.ALT_LEFT_KEY) then vDirection		= vDirection - vRight end
-	if Inputs.GetKey(self.RIGHT_KEY) then vDirection										= vDirection + vRight end
+	if Inputs.GetKey(self.LEFT_KEY) or Inputs.GetKey(self.ALT_LEFT_KEY) then vDirection		= vDirection + vRight end
+	if Inputs.GetKey(self.RIGHT_KEY) then vDirection										= vDirection - vRight end
 	if Inputs.GetKey(self.FORWARD_KEY) or Inputs.GetKey(self.ALT_FORWARD_KEY) then vDirection	= vDirection + vForward end
 	if Inputs.GetKey(self.BACKWARD_KEY) then vDirection										= vDirection - vForward end
 
