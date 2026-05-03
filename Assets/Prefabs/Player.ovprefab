@@ -1,0 +1,146 @@
+<root>
+    <prefab>
+        <actors>
+            <actor>
+                <name>Player</name>
+                <tag></tag>
+                <active>true</active>
+                <id>21</id>
+                <guid>5798324385719852583</guid>
+                <prefab_source>Prefabs/Player.ovprefab</prefab_source>
+                <prefab_node_guid>2715281165982403010</prefab_node_guid>
+                <parent>0</parent>
+                <components>
+                    <component>
+                        <type>class OvCore::ECS::Components::CTransform</type>
+                        <data>
+                            <position>
+                                <x>0</x>
+                                <y>3</y>
+                                <z>0</z>
+                            </position>
+                            <rotation>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0</z>
+                                <w>1</w>
+                            </rotation>
+                            <scale>
+                                <x>1</x>
+                                <y>1</y>
+                                <z>1</z>
+                            </scale>
+                        </data>
+                    </component>
+                    <component>
+                        <type>class OvCore::ECS::Components::CPhysicalCapsule</type>
+                        <data>
+                            <is_trigger>false</is_trigger>
+                            <is_kinematic>false</is_kinematic>
+                            <bounciness>0</bounciness>
+                            <mass>1</mass>
+                            <friction>0.5</friction>
+                            <linear_factor>
+                                <x>1</x>
+                                <y>1</y>
+                                <z>1</z>
+                            </linear_factor>
+                            <angular_factor>
+                                <x>1</x>
+                                <y>1</y>
+                                <z>1</z>
+                            </angular_factor>
+                            <collision_mode>0</collision_mode>
+                            <radius>0.75</radius>
+                            <height>4.5</height>
+                        </data>
+                    </component>
+                </components>
+                <behaviours>
+                    <behaviour>
+                        <type>Scripts/Player/Movement/CharacterMotor.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Player/Movement/Jump.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Player/Movement/Crouch.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Utils/Class.lua</type>
+                        <data/>
+                    </behaviour>
+                </behaviours>
+            </actor>
+            <actor>
+                <name>Player Model</name>
+                <tag></tag>
+                <active>true</active>
+                <id>22</id>
+                <guid>4790134293311939762</guid>
+                <prefab_source></prefab_source>
+                <prefab_node_guid>11683098742382515163</prefab_node_guid>
+                <parent>21</parent>
+                <components>
+                    <component>
+                        <type>class OvCore::ECS::Components::CTransform</type>
+                        <data>
+                            <position>
+                                <x>0</x>
+                                <y>-3</y>
+                                <z>0</z>
+                            </position>
+                            <rotation>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0</z>
+                                <w>1</w>
+                            </rotation>
+                            <scale>
+                                <x>1</x>
+                                <y>1</y>
+                                <z>1</z>
+                            </scale>
+                        </data>
+                    </component>
+                    <component>
+                        <type>class OvCore::ECS::Components::CModelRenderer</type>
+                        <data>
+                            <model>Models/Player/Player Model.fbx</model>
+                            <frustum_behaviour>2</frustum_behaviour>
+                            <custom_bounding_sphere_position>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0</z>
+                            </custom_bounding_sphere_position>
+                            <custom_bounding_sphere_radius>1</custom_bounding_sphere_radius>
+                        </data>
+                    </component>
+                    <component>
+                        <type>class OvCore::ECS::Components::CMaterialRenderer</type>
+                        <data>
+                            <materials>
+                                <material>Models/Player/Player Model.fbx:embedded_material_0.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_1.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_2.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_3.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_4.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_5.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_6.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_7.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_8.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_9.ovmat</material>
+                                <material>Models/Player/Player Model.fbx:embedded_material_10.ovmat</material>
+                            </materials>
+                            <visibility_flags>7</visibility_flags>
+                        </data>
+                    </component>
+                </components>
+                <behaviours/>
+            </actor>
+        </actors>
+    </prefab>
+</root>
