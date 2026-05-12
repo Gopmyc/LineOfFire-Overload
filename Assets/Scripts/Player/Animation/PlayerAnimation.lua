@@ -2,17 +2,10 @@
 local PlayerAnimation	=
 {
 	MIN_DIRECTION_MAGNITUDE		= 0.001,
-	HEAD_LOOK_PITCH_WEIGHT		= 0.7,
-	HEAD_LOOK_YAW_WEIGHT		= 0.4,
-	HEAD_LOOK_MAX_UP_ANGLE		= 45.0,
-	HEAD_LOOK_MAX_DOWN_ANGLE	= 35.0,
-	HEAD_LOOK_MAX_YAW_ANGLE		= 55.0,
-	HEAD_LOOK_SMOOTH_SPEED		= 14.0,
 
 	_private	=
 	{
 		sModelActorName			= "Player Model",
-		sCameraActorName		= "Player Camera",
 		tStateNames				=
 		{
 			sIdle				= "Idle",
@@ -53,21 +46,11 @@ local PlayerAnimation	=
 			sRightStrafeCrouch	= "ACT_RIGHT_STRAFE_CROUCH",
 			sJump				= "ACT_JUMP",
 		},
-		tHeadBoneNames			=
-		{
-			"mixamorig:Head",
-			"Head",
-			"mixamorig:Neck",
-			"Neck",
-		},
 		oPlayerState			= nil,
 		oController				= nil,
 		oTransform				= nil,
 		oPhysicalCapsule		= nil,
 		oSkinnedMeshRenderer	= nil,
-		oCameraTransform		= nil,
-		nHeadBoneIndex			= nil,
-		qHeadLookOffset			= nil,
 		sObservedState			= nil,
 		sActiveOneShotType		= nil,
 		sCurrentLoopAnimation	= nil,
@@ -82,8 +65,6 @@ function PlayerAnimation:OnAwake()
 	local oController					= self.owner:GetBehaviour("Controller")
 	local oTransform					= self.owner:GetTransform()
 	local oPhysicalCapsule				= self.owner:GetPhysicalCapsule()
-	local oCameraTransform				= self:ResolveCameraTransform()
-	local nHeadBoneIndex				= self:ResolveHeadBoneIndex(oSkinnedMeshRenderer)
 	local tStateNames					= self._private.tStateNames
 	local sCurrentState					= oPlayerState and oPlayerState:GetCurrentState() or tStateNames.sIdle
 
@@ -92,9 +73,6 @@ function PlayerAnimation:OnAwake()
 	self._private.oController			= oController
 	self._private.oTransform			= oTransform
 	self._private.oPhysicalCapsule		= oPhysicalCapsule
-	self._private.oCameraTransform		= oCameraTransform
-	self._private.nHeadBoneIndex		= nHeadBoneIndex
-	self._private.qHeadLookOffset		= Quaternion.new(Vector3.new(0, 0, 0))
 	self._private.sObservedState		= sCurrentState
 	self._private.sActiveOneShotType	= nil
 	self._private.sCurrentLoopAnimation	= nil
@@ -143,8 +121,6 @@ function PlayerAnimation:OnUpdate(nDeltaTime)
 	if bShouldApplyLoopAnimation then
 		self:ApplyLoopAnimationFromState(sCurrentState, false)
 	end
-
-	self:ApplyHeadLookFromCamera(nDeltaTime)
 end
 
 function PlayerAnimation:ResolveSkinnedMeshRenderer()
@@ -153,53 +129,6 @@ function PlayerAnimation:ResolveSkinnedMeshRenderer()
 	local oSkinnedMeshRenderer	= oModelActor and oModelActor:GetSkinnedMeshRenderer() or nil
 
 	return oSkinnedMeshRenderer or self:FindSkinnedMeshRendererRecursive(self.owner)
-end
-
-function PlayerAnimation:ResolveCameraTransform()
-	local sCameraActorName	= self._private.sCameraActorName
-	local oCameraActor		= self:FindActorByNameRecursive(self.owner, sCameraActorName)
-
-	return oCameraActor and oCameraActor:GetTransform() or nil
-end
-
-function PlayerAnimation:ResolveHeadBoneIndex(oSkinnedMeshRenderer)
-	if not oSkinnedMeshRenderer then return nil end
-
-	local tHeadBoneNames	= self._private.tHeadBoneNames
-
-	for _, sBoneName in ipairs(tHeadBoneNames) do
-		local nBoneIndex	= oSkinnedMeshRenderer:GetBoneIndex(sBoneName)
-
-		if nBoneIndex then
-			return nBoneIndex
-		end
-	end
-
-	local nHeadBoneIndex	= self:FindBoneIndexByNamePattern(oSkinnedMeshRenderer, "head")
-
-	if nHeadBoneIndex then
-		return nHeadBoneIndex
-	end
-
-	return self:FindBoneIndexByNamePattern(oSkinnedMeshRenderer, "neck")
-end
-
-function PlayerAnimation:FindBoneIndexByNamePattern(oSkinnedMeshRenderer, sPattern)
-	local nBoneCount	= oSkinnedMeshRenderer:GetBoneCount()
-
-	for nBoneIndex = 0, nBoneCount - 1 do
-		local sBoneName	= oSkinnedMeshRenderer:GetBoneName(nBoneIndex)
-
-		if sBoneName then
-			local sLowerBoneName	= string.lower(sBoneName)
-
-			if string.find(sLowerBoneName, sPattern, 1, true) then
-				return nBoneIndex
-			end
-		end
-	end
-
-	return nil
 end
 
 function PlayerAnimation:FindSkinnedMeshRendererRecursive(oActor)
@@ -457,52 +386,6 @@ function PlayerAnimation:GetCurrentStateName()
 	local sStateName	= oPlayerState and oPlayerState:GetCurrentState() or tStateNames.sIdle
 
 	return sStateName or tStateNames.sIdle
-end
-
-function PlayerAnimation:ApplyHeadLookFromCamera(nDeltaTime)
-	local oSkinnedMeshRenderer	= self._private.oSkinnedMeshRenderer
-	local oCameraTransform		= self._private.oCameraTransform
-	local nHeadBoneIndex		= self._private.nHeadBoneIndex
-
-	if not oSkinnedMeshRenderer or not oCameraTransform or not nHeadBoneIndex then return end
-
-	local qCurrentHeadRotation	= oSkinnedMeshRenderer:GetBoneLocalRotation(nHeadBoneIndex)
-	if not qCurrentHeadRotation then return end
-
-	local nCameraPitch, nCameraYaw	= self:GetCameraLocalAngles(oCameraTransform)
-	local nHeadPitchAngle		= self:Clamp(nCameraPitch * self.HEAD_LOOK_PITCH_WEIGHT, -self.HEAD_LOOK_MAX_UP_ANGLE, self.HEAD_LOOK_MAX_DOWN_ANGLE)
-	local nHeadYawAngle			= self:Clamp(nCameraYaw * self.HEAD_LOOK_YAW_WEIGHT, -self.HEAD_LOOK_MAX_YAW_ANGLE, self.HEAD_LOOK_MAX_YAW_ANGLE)
-	local qCurrentHeadLookOffset	= self._private.qHeadLookOffset
-	local qTargetHeadLookOffset	= Quaternion.new(Vector3.new(nHeadPitchAngle, nHeadYawAngle, 0))
-	local nInterpolationAlpha	= self:Clamp(nDeltaTime * self.HEAD_LOOK_SMOOTH_SPEED, 0.0, 1.0)
-	local qSmoothedHeadLookOffset	= Quaternion.Slerp(qCurrentHeadLookOffset, qTargetHeadLookOffset, nInterpolationAlpha)
-	local qBaseHeadRotation		= qCurrentHeadRotation * qCurrentHeadLookOffset:Inverse()
-	local qSmoothedHeadRotation	= qBaseHeadRotation * qSmoothedHeadLookOffset
-
-	oSkinnedMeshRenderer:SetBoneLocalRotation(nHeadBoneIndex, qSmoothedHeadRotation)
-	self._private.qHeadLookOffset	= qSmoothedHeadLookOffset
-end
-
-function PlayerAnimation:GetCameraLocalAngles(oCameraTransform)
-	local vCameraEulerAngles	= oCameraTransform:GetLocalRotation():EulerAngles()
-	local nPitchAngle			= self:NormalizeAngle180(vCameraEulerAngles.x)
-	local nYawAngle				= self:NormalizeAngle180(vCameraEulerAngles.y)
-
-	return nPitchAngle, nYawAngle
-end
-
-function PlayerAnimation:NormalizeAngle180(nAngle)
-	local nNormalizedAngle	= nAngle
-
-	while nNormalizedAngle > 180 do
-		nNormalizedAngle	= nNormalizedAngle - 360
-	end
-
-	while nNormalizedAngle < -180 do
-		nNormalizedAngle	= nNormalizedAngle + 360
-	end
-
-	return nNormalizedAngle
 end
 
 return PlayerAnimation
