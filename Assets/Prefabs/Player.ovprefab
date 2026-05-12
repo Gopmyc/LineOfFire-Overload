@@ -113,11 +113,15 @@
                         <data/>
                     </behaviour>
                     <behaviour>
-                        <type>Scripts/Player/Movement/PlayerState.lua</type>
+                        <type>Scripts/Player/State/PlayerState.lua</type>
                         <data/>
                     </behaviour>
                     <behaviour>
-                        <type>Scripts/Player/Movement/PlayerAnimation.lua</type>
+                        <type>Scripts/Player/Animation/PlayerAnimation.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Player/Animation/PlayerHeadLook.lua</type>
                         <data/>
                     </behaviour>
                     <behaviour>
@@ -196,7 +200,7 @@
                             <looping>true</looping>
                             <playback_speed>1</playback_speed>
                             <mesh_bounds_scale>1.5</mesh_bounds_scale>
-                            <pose_eval_rate>60</pose_eval_rate>
+                            <pose_eval_rate>0</pose_eval_rate>
                             <time_ticks>0</time_ticks>
                             <animation></animation>
                         </data>
