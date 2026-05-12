@@ -5,8 +5,8 @@
                 <name>Player</name>
                 <tag></tag>
                 <active>true</active>
-                <id>28</id>
-                <guid>16746861620266070380</guid>
+                <id>7</id>
+                <guid>4910756435691766116</guid>
                 <prefab_source>Prefabs/Player.ovprefab</prefab_source>
                 <prefab_node_guid>2715281165982403010</prefab_node_guid>
                 <parent>0</parent>
@@ -48,11 +48,11 @@
                 <name>Player Physics</name>
                 <tag></tag>
                 <active>true</active>
-                <id>31</id>
-                <guid>10672473456091222491</guid>
+                <id>8</id>
+                <guid>17088218541729746387</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>15159312095306512330</prefab_node_guid>
-                <parent>28</parent>
+                <parent>7</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -113,71 +113,28 @@
                         <data/>
                     </behaviour>
                     <behaviour>
+                        <type>Scripts/Player/Movement/PlayerState.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Player/Movement/PlayerAnimation.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
                         <data/>
                     </behaviour>
                 </behaviours>
             </actor>
             <actor>
-                <name>Player Camera</name>
-                <tag></tag>
-                <active>true</active>
-                <id>29</id>
-                <guid>6577672061490106968</guid>
-                <prefab_source></prefab_source>
-                <prefab_node_guid>1445865113735604112</prefab_node_guid>
-                <parent>30</parent>
-                <components>
-                    <component>
-                        <type>class OvCore::ECS::Components::CTransform</type>
-                        <data>
-                            <position>
-                                <x>0</x>
-                                <y>5.5500002</y>
-                                <z>0.30000001</z>
-                            </position>
-                            <rotation>
-                                <x>0</x>
-                                <y>0</y>
-                                <z>0</z>
-                                <w>1</w>
-                            </rotation>
-                            <scale>
-                                <x>1</x>
-                                <y>1</y>
-                                <z>1</z>
-                            </scale>
-                        </data>
-                    </component>
-                    <component>
-                        <type>class OvCore::ECS::Components::CCamera</type>
-                        <data>
-                            <fov>60</fov>
-                            <size>5</size>
-                            <near>0.15000001</near>
-                            <far>1000</far>
-                            <clear_color>
-                                <x>0.1921569</x>
-                                <y>0.3019608</y>
-                                <z>0.47450981</z>
-                            </clear_color>
-                            <frustum_geometry_culling>true</frustum_geometry_culling>
-                            <frustum_light_culling>true</frustum_light_culling>
-                            <projection_mode>1</projection_mode>
-                        </data>
-                    </component>
-                </components>
-                <behaviours/>
-            </actor>
-            <actor>
                 <name>Player Model</name>
                 <tag></tag>
                 <active>true</active>
-                <id>30</id>
-                <guid>18097875275925163708</guid>
+                <id>10</id>
+                <guid>4703610746366911667</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>11683098742382515163</prefab_node_guid>
-                <parent>31</parent>
+                <parent>8</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -230,6 +187,69 @@
                                 <material>Models/Player/Player Model.fbx:embedded_material_10.ovmat</material>
                             </materials>
                             <visibility_flags>7</visibility_flags>
+                        </data>
+                    </component>
+                    <component>
+                        <type>class OvCore::ECS::Components::CSkinnedMeshRenderer</type>
+                        <data>
+                            <playing>true</playing>
+                            <looping>true</looping>
+                            <playback_speed>1</playback_speed>
+                            <mesh_bounds_scale>1.5</mesh_bounds_scale>
+                            <pose_eval_rate>60</pose_eval_rate>
+                            <time_ticks>0</time_ticks>
+                            <animation></animation>
+                        </data>
+                    </component>
+                </components>
+                <behaviours/>
+            </actor>
+            <actor>
+                <name>Player Camera</name>
+                <tag></tag>
+                <active>true</active>
+                <id>9</id>
+                <guid>3829850355606861704</guid>
+                <prefab_source></prefab_source>
+                <prefab_node_guid>1445865113735604112</prefab_node_guid>
+                <parent>10</parent>
+                <components>
+                    <component>
+                        <type>class OvCore::ECS::Components::CTransform</type>
+                        <data>
+                            <position>
+                                <x>0</x>
+                                <y>5.5500002</y>
+                                <z>0.30000001</z>
+                            </position>
+                            <rotation>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0</z>
+                                <w>1</w>
+                            </rotation>
+                            <scale>
+                                <x>1</x>
+                                <y>1</y>
+                                <z>1</z>
+                            </scale>
+                        </data>
+                    </component>
+                    <component>
+                        <type>class OvCore::ECS::Components::CCamera</type>
+                        <data>
+                            <fov>60</fov>
+                            <size>5</size>
+                            <near>0.15000001</near>
+                            <far>1000</far>
+                            <clear_color>
+                                <x>0.1921569</x>
+                                <y>0.3019608</y>
+                                <z>0.47450981</z>
+                            </clear_color>
+                            <frustum_geometry_culling>true</frustum_geometry_culling>
+                            <frustum_light_culling>true</frustum_light_culling>
+                            <projection_mode>1</projection_mode>
                         </data>
                     </component>
                 </components>
