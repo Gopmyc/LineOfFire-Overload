@@ -38,6 +38,9 @@ local PlayerHeadLook	=
 	TACTICAL_LEG_ASYMMETRY			= 0.22,
 	TACTICAL_FOOT_OPENING			= 0.30,
 	TACTICAL_KNEE_FLEX_BIAS			= 0.18,
+	CAMERA_HEAD_OFFSET_X			= 0.0,
+	CAMERA_HEAD_OFFSET_Y			= 0.45,
+	CAMERA_HEAD_OFFSET_Z			= 0.35,
 
 	_private	=
 	{
@@ -168,6 +171,7 @@ function PlayerHeadLook:OnLateUpdate(nDeltaTime)
 	self:UpdateUpperBodyAngles(nDeltaTime, nCameraPitchAngle, nFilteredYawAngle)
 	self:UpdateTurnInPlaceSway(nDeltaTime)
 	self:ApplyProceduralOffsets(oSkinnedMeshRenderer)
+	self:UpdateCameraHeadAttachment()
 end
 
 function PlayerHeadLook:ResolveSkinnedMeshRenderer()
@@ -364,6 +368,53 @@ function PlayerHeadLook:ApplyProceduralOffsets(oSkinnedMeshRenderer)
 	tPrivate.qRightLegPreviousOffset		= self:ApplyBoneOffset(oSkinnedMeshRenderer, tPrivate.nRightLegBoneIndex, tPrivate.qRightLegPreviousOffset, tPrivate.nRightLegPitch, 0.0, 0.0)
 	tPrivate.qLeftFootPreviousOffset		= self:ApplyBoneOffset(oSkinnedMeshRenderer, tPrivate.nLeftFootBoneIndex, tPrivate.qLeftFootPreviousOffset, tPrivate.nLeftFootPitch, tPrivate.nLeftFootYaw, tPrivate.nLeftFootRoll)
 	tPrivate.qRightFootPreviousOffset		= self:ApplyBoneOffset(oSkinnedMeshRenderer, tPrivate.nRightFootBoneIndex, tPrivate.qRightFootPreviousOffset, tPrivate.nRightFootPitch, tPrivate.nRightFootYaw, tPrivate.nRightFootRoll)
+end
+
+function PlayerHeadLook:UpdateCameraHeadAttachment()
+	local tPrivate				= self._private
+	local oSkinnedMeshRenderer	= tPrivate.oSkinnedMeshRenderer
+	local oCameraTransform		= tPrivate.oCameraTransform
+
+	if not oSkinnedMeshRenderer or not oCameraTransform then return end
+
+	local vHeadLocalPosition	= Vector3.new(0, 0, 0)
+	local qHeadLocalRotation	= Quaternion.new(Vector3.new(0, 0, 0))
+	local bHasHeadTransform		= false
+
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nHipsBoneIndex)
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nSpineBoneIndex, bHasHeadTransform)
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nSpine1BoneIndex, bHasHeadTransform)
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nSpine2BoneIndex, bHasHeadTransform)
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nNeckBoneIndex, bHasHeadTransform)
+	vHeadLocalPosition, qHeadLocalRotation, bHasHeadTransform	= self:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vHeadLocalPosition, qHeadLocalRotation, tPrivate.nHeadBoneIndex, bHasHeadTransform)
+
+	if not bHasHeadTransform then return end
+
+	local vHeadLocalOffset		= Vector3.new(self.CAMERA_HEAD_OFFSET_X, self.CAMERA_HEAD_OFFSET_Y, self.CAMERA_HEAD_OFFSET_Z)
+	local vCameraLocalPosition	= vHeadLocalPosition + (qHeadLocalRotation * vHeadLocalOffset)
+
+	oCameraTransform:SetLocalPosition(vCameraLocalPosition)
+end
+
+function PlayerHeadLook:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vAccumPosition, qAccumRotation, nBoneIndex, bHasTransform)
+	if not nBoneIndex then
+		return vAccumPosition, qAccumRotation, bHasTransform or false
+	end
+
+	local vBoneLocalPosition	= oSkinnedMeshRenderer:GetBoneLocalPosition(nBoneIndex)
+	local qBoneLocalRotation	= oSkinnedMeshRenderer:GetBoneLocalRotation(nBoneIndex)
+	local bDidAccumulate		= (vBoneLocalPosition ~= nil) or (qBoneLocalRotation ~= nil)
+	local bHasAccumulated		= bHasTransform or false
+
+	if vBoneLocalPosition then
+		vAccumPosition	= vAccumPosition + (qAccumRotation * vBoneLocalPosition)
+	end
+
+	if qBoneLocalRotation then
+		qAccumRotation	= qAccumRotation * qBoneLocalRotation
+	end
+
+	return vAccumPosition, qAccumRotation, bHasAccumulated or bDidAccumulate
 end
 
 function PlayerHeadLook:ApplyBoneOffset(oSkinnedMeshRenderer, nBoneIndex, qPreviousOffset, nPitchAngle, nYawAngle, nRollAngle)
