@@ -5,8 +5,9 @@ local View	=
 	MOUSE_RELOCK_BUTTON		= MouseButton.BUTTON_LEFT,
 	MOUSE_SENSITIVITY_X		= 0.12,
 	MOUSE_SENSITIVITY_Y		= 0.12,
-	MODEL_FOLLOW_THRESHOLD_ANGLE	= 140.0,
+	MODEL_FOLLOW_THRESHOLD_ANGLE	= 95.0,
 	MODEL_FOLLOW_MAX_SPEED	= 420.0,
+	MODEL_FOLLOW_ACCELERATION	= 2600.0,
 	MAX_FREELOOK_YAW_ANGLE	= 170.0,
 	MIN_PITCH_ANGLE			= -85.0,
 	MAX_PITCH_ANGLE			= 85.0,
@@ -20,6 +21,8 @@ local View	=
 		vLastMousePosition	= Vector2.new(0, 0),
 		nBodyYawAngle		= 0.0,
 		nCameraLocalYawAngle	= 0.0,
+		nLastBodyYawDelta	= 0.0,
+		nLastBodyYawSpeed	= 0.0,
 		nPitchAngle			= 0.0,
 		bHasMousePosition	= false,
 		bIsMouseLocked		= false,
@@ -38,13 +41,16 @@ function View:OnAwake()
 	local oCameraActor				= self:FindActorByNameRecursive(self.owner, sCameraActorName)
 	local oCameraTransform			= oCameraActor and oCameraActor:GetTransform() or nil
 	local nCurrentBodyYaw			= oYawTransform:GetLocalRotation():EulerAngles().y
-	local nCurrentCameraLocalYaw	= oCameraTransform and oCameraTransform:GetLocalRotation():EulerAngles().y or 0.0
+	local nCurrentCameraLocalYawRaw	= oCameraTransform and oCameraTransform:GetLocalRotation():EulerAngles().y or 0.0
+	local nCurrentCameraLocalYaw	= self:Clamp(self:NormalizeAngle180(nCurrentCameraLocalYawRaw), -self.MAX_FREELOOK_YAW_ANGLE, self.MAX_FREELOOK_YAW_ANGLE)
 	local nCurrentPitch				= oCameraTransform and oCameraTransform:GetLocalRotation():EulerAngles().x or 0.0
 
 	self._private.oYawTransform		= oYawTransform
 	self._private.oCameraTransform		= oCameraTransform
 	self._private.nBodyYawAngle		= nCurrentBodyYaw
 	self._private.nCameraLocalYawAngle	= nCurrentCameraLocalYaw
+	self._private.nLastBodyYawDelta		= 0.0
+	self._private.nLastBodyYawSpeed		= 0.0
 	self._private.nPitchAngle			= nCurrentPitch
 end
 
@@ -90,21 +96,30 @@ function View:OnUpdate(nDeltaTime)
 	self._private.vLastMousePosition	= vCurrentMousePosition
 
 	local bNeedsBodyFollowUpdate	= self:NeedsBodyFollowUpdate()
-	if nYawDelta == 0 and nPitchDelta == 0 and not bNeedsBodyFollowUpdate then return end
+	if nYawDelta == 0 and nPitchDelta == 0 and not bNeedsBodyFollowUpdate then
+		self._private.nLastBodyYawDelta	= 0.0
+		self._private.nLastBodyYawSpeed	= 0.0
+		return
+	end
 
 	local nBodyYawAngle			= self._private.nBodyYawAngle
 	local nCameraLocalYawAngle	= self._private.nCameraLocalYawAngle
 	local nPitchAngle			= self:Clamp(self._private.nPitchAngle + nPitchDelta, self.MIN_PITCH_ANGLE, self.MAX_PITCH_ANGLE)
-	local nFreelookYawAngle		= self:NormalizeAngle180(nCameraLocalYawAngle + nYawDelta)
+	local nFreelookYawAngle		= nCameraLocalYawAngle + nYawDelta
 	local nFreelookYawClamped	= self:Clamp(nFreelookYawAngle, -self.MAX_FREELOOK_YAW_ANGLE, self.MAX_FREELOOK_YAW_ANGLE)
-	local nBodyYawDelta			= self:ComputeBodyYawDelta(nFreelookYawClamped, nDeltaTime)
+	local nBodyYawDeltaTarget	= self:ComputeBodyYawDelta(nFreelookYawClamped, nDeltaTime)
+	local bHasYawFollowTarget	= nBodyYawDeltaTarget ~= 0.0
+	local nBodyYawDelta			= bHasYawFollowTarget and self:ComputeSmoothedBodyYawDelta(nBodyYawDeltaTarget, nDeltaTime) or 0.0
+	local nBodyYawSpeed			= nDeltaTime > 0 and (nBodyYawDelta / nDeltaTime) or 0.0
 	local nUpdatedBodyYawAngle	= self:NormalizeAngle180(nBodyYawAngle + nBodyYawDelta)
-	local nUpdatedFreelookYaw	= self:NormalizeAngle180(nFreelookYawClamped - nBodyYawDelta)
+	local nUpdatedFreelookYaw	= self:Clamp(nFreelookYawClamped - nBodyYawDelta, -self.MAX_FREELOOK_YAW_ANGLE, self.MAX_FREELOOK_YAW_ANGLE)
 	local qYawRotation			= Quaternion.new(Vector3.new(0, nUpdatedBodyYawAngle, 0))
 	local oCameraTransform	= self._private.oCameraTransform
 
 	self._private.nBodyYawAngle	= nUpdatedBodyYawAngle
 	self._private.nCameraLocalYawAngle	= nUpdatedFreelookYaw
+	self._private.nLastBodyYawDelta	= nBodyYawDelta
+	self._private.nLastBodyYawSpeed	= nBodyYawSpeed
 	self._private.nPitchAngle	= nPitchAngle
 
 	oYawTransform:SetLocalRotation(qYawRotation)
@@ -128,6 +143,19 @@ function View:ComputeBodyYawDelta(nCameraLocalYawAngle, nDeltaTime)
 	local nClampedYawDelta		= self:Clamp(nOverflowYaw, -nMaxYawDelta, nMaxYawDelta)
 
 	return nClampedYawDelta
+end
+
+function View:ComputeSmoothedBodyYawDelta(nBodyYawDeltaTarget, nDeltaTime)
+	if nDeltaTime <= 0 then
+		return nBodyYawDeltaTarget
+	end
+
+	local nCurrentBodyYawDelta	= self._private.nLastBodyYawDelta
+	local nYawDeltaDifference	= nBodyYawDeltaTarget - nCurrentBodyYawDelta
+	local nMaxDeltaVariation	= self.MODEL_FOLLOW_ACCELERATION * nDeltaTime
+	local nDeltaVariation		= self:Clamp(nYawDeltaDifference, -nMaxDeltaVariation, nMaxDeltaVariation)
+
+	return nCurrentBodyYawDelta + nDeltaVariation
 end
 
 function View:NeedsBodyFollowUpdate()
@@ -196,6 +224,14 @@ end
 
 function View:GetCameraLocalYawAngle()
 	return self._private.nCameraLocalYawAngle
+end
+
+function View:GetBodyYawDelta()
+	return self._private.nLastBodyYawDelta
+end
+
+function View:GetBodyYawSpeed()
+	return self._private.nLastBodyYawSpeed
 end
 
 return View
