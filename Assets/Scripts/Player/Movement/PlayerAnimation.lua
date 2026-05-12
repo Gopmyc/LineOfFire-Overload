@@ -67,6 +67,7 @@ local PlayerAnimation	=
 		oSkinnedMeshRenderer	= nil,
 		oCameraTransform		= nil,
 		nHeadBoneIndex			= nil,
+		qHeadLookOffset			= nil,
 		sObservedState			= nil,
 		sActiveOneShotType		= nil,
 		sCurrentLoopAnimation	= nil,
@@ -93,6 +94,7 @@ function PlayerAnimation:OnAwake()
 	self._private.oPhysicalCapsule		= oPhysicalCapsule
 	self._private.oCameraTransform		= oCameraTransform
 	self._private.nHeadBoneIndex		= nHeadBoneIndex
+	self._private.qHeadLookOffset		= Quaternion.new(Vector3.new(0, 0, 0))
 	self._private.sObservedState		= sCurrentState
 	self._private.sActiveOneShotType	= nil
 	self._private.sCurrentLoopAnimation	= nil
@@ -468,19 +470,17 @@ function PlayerAnimation:ApplyHeadLookFromCamera(nDeltaTime)
 	if not qCurrentHeadRotation then return end
 
 	local nCameraPitch, nCameraYaw	= self:GetCameraLocalAngles(oCameraTransform)
-	local nHeadPitchAngle	= self:Clamp(nCameraPitch * self.HEAD_LOOK_PITCH_WEIGHT, -self.HEAD_LOOK_MAX_UP_ANGLE, self.HEAD_LOOK_MAX_DOWN_ANGLE)
-	local nHeadYawAngle		= self:Clamp(nCameraYaw * self.HEAD_LOOK_YAW_WEIGHT, -self.HEAD_LOOK_MAX_YAW_ANGLE, self.HEAD_LOOK_MAX_YAW_ANGLE)
-	local vCurrentHeadEuler	= qCurrentHeadRotation:EulerAngles()
-	local vTargetHeadEuler	= Vector3.new(
-		vCurrentHeadEuler.x + nHeadPitchAngle,
-		vCurrentHeadEuler.y + nHeadYawAngle,
-		vCurrentHeadEuler.z
-	)
-	local qTargetHeadRotation	= Quaternion.new(vTargetHeadEuler)
+	local nHeadPitchAngle		= self:Clamp(nCameraPitch * self.HEAD_LOOK_PITCH_WEIGHT, -self.HEAD_LOOK_MAX_UP_ANGLE, self.HEAD_LOOK_MAX_DOWN_ANGLE)
+	local nHeadYawAngle			= self:Clamp(nCameraYaw * self.HEAD_LOOK_YAW_WEIGHT, -self.HEAD_LOOK_MAX_YAW_ANGLE, self.HEAD_LOOK_MAX_YAW_ANGLE)
+	local qCurrentHeadLookOffset	= self._private.qHeadLookOffset
+	local qTargetHeadLookOffset	= Quaternion.new(Vector3.new(nHeadPitchAngle, nHeadYawAngle, 0))
 	local nInterpolationAlpha	= self:Clamp(nDeltaTime * self.HEAD_LOOK_SMOOTH_SPEED, 0.0, 1.0)
-	local qSmoothedHeadRotation	= Quaternion.Slerp(qCurrentHeadRotation, qTargetHeadRotation, nInterpolationAlpha)
+	local qSmoothedHeadLookOffset	= Quaternion.Slerp(qCurrentHeadLookOffset, qTargetHeadLookOffset, nInterpolationAlpha)
+	local qBaseHeadRotation		= qCurrentHeadRotation * qCurrentHeadLookOffset:Inverse()
+	local qSmoothedHeadRotation	= qBaseHeadRotation * qSmoothedHeadLookOffset
 
 	oSkinnedMeshRenderer:SetBoneLocalRotation(nHeadBoneIndex, qSmoothedHeadRotation)
+	self._private.qHeadLookOffset	= qSmoothedHeadLookOffset
 end
 
 function PlayerAnimation:GetCameraLocalAngles(oCameraTransform)
