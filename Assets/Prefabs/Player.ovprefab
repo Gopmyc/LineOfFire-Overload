@@ -5,8 +5,8 @@
                 <name>Player</name>
                 <tag></tag>
                 <active>true</active>
-                <id>7</id>
-                <guid>4910756435691766116</guid>
+                <id>27</id>
+                <guid>17309845165126306370</guid>
                 <prefab_source>Prefabs/Player.ovprefab</prefab_source>
                 <prefab_node_guid>2715281165982403010</prefab_node_guid>
                 <parent>0</parent>
@@ -48,25 +48,25 @@
                 <name>Player Physics</name>
                 <tag></tag>
                 <active>true</active>
-                <id>8</id>
-                <guid>17088218541729746387</guid>
+                <id>28</id>
+                <guid>1113872688261034498</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>15159312095306512330</prefab_node_guid>
-                <parent>7</parent>
+                <parent>27</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>0</x>
+                                <x>0.8714838</x>
                                 <y>3</y>
-                                <z>0</z>
+                                <z>1.8505114</z>
                             </position>
                             <rotation>
                                 <x>0</x>
-                                <y>0</y>
+                                <y>-0.1305262</y>
                                 <z>0</z>
-                                <w>1</w>
+                                <w>0.99144489</w>
                             </rotation>
                             <scale>
                                 <x>1</x>
@@ -89,9 +89,9 @@
                                 <z>1</z>
                             </linear_factor>
                             <angular_factor>
-                                <x>1</x>
-                                <y>1</y>
-                                <z>1</z>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0</z>
                             </angular_factor>
                             <collision_mode>0</collision_mode>
                             <radius>0.75</radius>
@@ -134,11 +134,11 @@
                 <name>Player Model</name>
                 <tag></tag>
                 <active>true</active>
-                <id>10</id>
-                <guid>4703610746366911667</guid>
+                <id>29</id>
+                <guid>17746082506759084196</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>11683098742382515163</prefab_node_guid>
-                <parent>8</parent>
+                <parent>28</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -212,11 +212,11 @@
                 <name>Player Camera</name>
                 <tag></tag>
                 <active>true</active>
-                <id>9</id>
-                <guid>3829850355606861704</guid>
+                <id>30</id>
+                <guid>10400584712117304813</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>1445865113735604112</prefab_node_guid>
-                <parent>10</parent>
+                <parent>29</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -227,10 +227,10 @@
                                 <z>0.30000001</z>
                             </position>
                             <rotation>
-                                <x>0</x>
+                                <x>0.24056688</x>
                                 <y>0</y>
                                 <z>0</z>
-                                <w>1</w>
+                                <w>0.97063255</w>
                             </rotation>
                             <scale>
                                 <x>1</x>
@@ -242,7 +242,7 @@
                     <component>
                         <type>class OvCore::ECS::Components::CCamera</type>
                         <data>
-                            <fov>60</fov>
+                            <fov>110</fov>
                             <size>5</size>
                             <near>0.15000001</near>
                             <far>1000</far>
