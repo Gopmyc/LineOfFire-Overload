@@ -1,8 +1,8 @@
 ---@class View : Behaviour
 local View	=
 {
-	PHYSICS_ACTOR_NAME		= "Player Physics",
-	CAMERA_ACTOR_NAME		= "Player Camera",
+	MOUSE_UNLOCK_KEY		= Key.F3,
+	MOUSE_RELOCK_BUTTON		= MouseButton.BUTTON_LEFT,
 	MOUSE_SENSITIVITY_X		= 0.12,
 	MOUSE_SENSITIVITY_Y		= 0.12,
 	MIN_PITCH_ANGLE			= -85.0,
@@ -19,15 +19,19 @@ local View	=
 		nPitchAngle			= 0.0,
 		bHasMousePosition	= false,
 		bIsMouseLocked		= false,
+		sPhysicsActorName	= "Player Physics",
+		sCameraActorName	= "Player Camera",
 	}
 }
 
 function View:OnAwake()
 	self						= setmetatable(self, self.owner:GetBehaviour("Class"))
 
-	local oPhysicsActor				= self:FindActorByNameRecursive(self.owner, self.PHYSICS_ACTOR_NAME)
+	local sPhysicsActorName			= self._private.sPhysicsActorName
+	local sCameraActorName			= self._private.sCameraActorName
+	local oPhysicsActor				= self:FindActorByNameRecursive(self.owner, sPhysicsActorName)
 	local oYawTransform				= oPhysicsActor and oPhysicsActor:GetTransform() or self.owner:GetTransform()
-	local oCameraActor				= self:FindActorByNameRecursive(self.owner, self.CAMERA_ACTOR_NAME)
+	local oCameraActor				= self:FindActorByNameRecursive(self.owner, sCameraActorName)
 	local oCameraTransform			= oCameraActor and oCameraActor:GetTransform() or nil
 	local nCurrentYaw				= oYawTransform:GetLocalRotation():EulerAngles().y
 	local nCurrentPitch				= oCameraTransform and oCameraTransform:GetLocalRotation():EulerAngles().x or 0.0
@@ -55,9 +59,12 @@ function View:OnDestroy()
 end
 
 function View:OnUpdate(nDeltaTime)
+	self:HandleMouseTrackingState()
+
+	local bIsMouseLocked	= self._private.bIsMouseLocked
 	local oYawTransform	= self._private.oYawTransform
 
-	if not oYawTransform then return end
+	if not bIsMouseLocked or not oYawTransform then return end
 
 	local vCurrentMousePosition	= Inputs.GetMousePos()
 	local bHasMousePosition		= self._private.bHasMousePosition
@@ -90,6 +97,21 @@ function View:OnUpdate(nDeltaTime)
 
 	if oCameraTransform then
 		oCameraTransform:SetLocalRotation(Quaternion.new(Vector3.new(nPitchAngle, 0, 0)))
+	end
+end
+
+function View:HandleMouseTrackingState()
+	local bIsMouseLocked	= self._private.bIsMouseLocked
+	local bWantsUnlock		= Inputs.GetKeyDown(self.MOUSE_UNLOCK_KEY)
+	local bWantsRelock		= Inputs.GetMouseButtonDown(self.MOUSE_RELOCK_BUTTON)
+
+	if bIsMouseLocked and bWantsUnlock then
+		self:UnlockMouse()
+		return
+	end
+
+	if not bIsMouseLocked and bWantsRelock then
+		self:LockMouse()
 	end
 end
 
