@@ -38,6 +38,8 @@ local PlayerHeadLook	=
 	TACTICAL_LEG_ASYMMETRY			= 0.22,
 	TACTICAL_FOOT_OPENING			= 0.30,
 	TACTICAL_KNEE_FLEX_BIAS			= 0.18,
+	CAMERA_ATTACHMENT_MAX_LOCAL_DISTANCE	= 8.5,
+	CAMERA_ATTACHMENT_MAX_FRAME_DELTA	= 0.45,
 	CAMERA_HEAD_OFFSET_X			= 0.0,
 	CAMERA_HEAD_OFFSET_Y			= 0.45,
 	CAMERA_HEAD_OFFSET_Z			= 0.35,
@@ -53,6 +55,7 @@ local PlayerHeadLook	=
 		tBoneIndices			= {},
 		tBoneAngles				= {},
 		nTurnStepPhase			= 0.0,
+		vLastCameraLocalPosition	= nil,
 	}
 }
 
@@ -91,6 +94,7 @@ function PlayerHeadLook:OnAwake()
 	self._private.tBoneIndices			= self:ResolveBoneIndices(oSkinnedMeshRenderer)
 	self._private.tBoneAngles			= {}
 	self._private.nTurnStepPhase		= 0.0
+	self._private.vLastCameraLocalPosition	= oCameraTransform and oCameraTransform:GetLocalPosition() or nil
 end
 
 function PlayerHeadLook:OnLateUpdate(nDeltaTime)
@@ -254,8 +258,37 @@ function PlayerHeadLook:UpdateCameraHeadAttachment()
 
 	local vHeadLocalOffset		= Vector3.new(self.CAMERA_HEAD_OFFSET_X, self.CAMERA_HEAD_OFFSET_Y, self.CAMERA_HEAD_OFFSET_Z)
 	local vCameraLocalPosition	= vHeadLocalPosition + (qHeadLocalRotation * vHeadLocalOffset)
+	local nCameraLocalDistance	= vCameraLocalPosition:Length()
+	local bIsCameraLocalPositionValid	= self:IsFiniteVector3(vCameraLocalPosition) and nCameraLocalDistance <= self.CAMERA_ATTACHMENT_MAX_LOCAL_DISTANCE
+
+	if not bIsCameraLocalPositionValid then return end
+
+	local vLastCameraLocalPosition	= self._private.vLastCameraLocalPosition
+	local nMaxCameraFrameDelta	= self.CAMERA_ATTACHMENT_MAX_FRAME_DELTA
+
+	if vLastCameraLocalPosition and nMaxCameraFrameDelta > 0.0 then
+		local vCameraLocalDelta		= vCameraLocalPosition - vLastCameraLocalPosition
+		local nCameraLocalDeltaLength	= vCameraLocalDelta:Length()
+
+		if nCameraLocalDeltaLength > nMaxCameraFrameDelta and nCameraLocalDeltaLength > 0.0 then
+			local nDeltaScale	= nMaxCameraFrameDelta / nCameraLocalDeltaLength
+
+			vCameraLocalPosition	= vLastCameraLocalPosition + (vCameraLocalDelta * nDeltaScale)
+		end
+	end
 
 	oCameraTransform:SetLocalPosition(vCameraLocalPosition)
+	self._private.vLastCameraLocalPosition	= vCameraLocalPosition
+end
+
+function PlayerHeadLook:IsFiniteNumber(nValue)
+	return nValue == nValue and nValue ~= math.huge and nValue ~= -math.huge
+end
+
+function PlayerHeadLook:IsFiniteVector3(vValue)
+	if not vValue then return false end
+
+	return self:IsFiniteNumber(vValue.x) and self:IsFiniteNumber(vValue.y) and self:IsFiniteNumber(vValue.z)
 end
 
 function PlayerHeadLook:AccumulateBoneLocalTransform(oSkinnedMeshRenderer, vAccumPosition, qAccumRotation, nBoneIndex, bHasTransform)

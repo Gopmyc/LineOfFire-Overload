@@ -17,6 +17,10 @@ local Controller	=
 	AIR_BACKWARD_SPEED				= 4.5,
 	AIR_LEFT_SPEED					= 4.75,
 	AIR_RIGHT_SPEED					= 4.75,
+	MAX_PLANAR_SPEED				= 24.0,
+	MAX_AIR_VERTICAL_SPEED			= 40.0,
+	MAX_GROUNDED_ABS_Y_VELOCITY		= 2.5,
+	MAX_TOTAL_SPEED				= 48.0,
 	NORMALIZE_DIAGONAL_INPUT		= true,
 	MOVE_SPEED_MULTIPLIER			= 1.0,
 	LEFT_KEY						= Key.A,
@@ -194,9 +198,42 @@ function Controller:GetAirSpeedProfile()
 end
 
 function Controller:ApplyPlanarVelocity(oPhysicalCapsule, vPlanarVelocity)
-	local vCurrentVelocity	= oPhysicalCapsule:GetLinearVelocity()
+	local vCurrentVelocity			= oPhysicalCapsule:GetLinearVelocity()
+	local bIsCurrentVelocityValid	= self:IsFiniteVector3(vCurrentVelocity)
+	local bIsPlanarVelocityValid	= self:IsFiniteVector3(vPlanarVelocity)
+	local vSafeCurrentVelocity		= bIsCurrentVelocityValid and vCurrentVelocity or Vector3.new(0, 0, 0)
+	local vSafePlanarVelocity		= bIsPlanarVelocityValid and vPlanarVelocity or Vector3.new(0, 0, 0)
+	local bIsGrounded			= self:IsGrounded()
+	local nMaxPlanarSpeed			= self.MAX_PLANAR_SPEED
+	local nPlanarSpeedSq			= (vSafePlanarVelocity.x * vSafePlanarVelocity.x) + (vSafePlanarVelocity.z * vSafePlanarVelocity.z)
+	local nMaxPlanarSpeedSq			= nMaxPlanarSpeed * nMaxPlanarSpeed
+	local nVerticalSpeedLimit		= bIsGrounded and self.MAX_GROUNDED_ABS_Y_VELOCITY or self.MAX_AIR_VERTICAL_SPEED
+	local nVerticalVelocity			= self:Clamp(vSafeCurrentVelocity.y, -nVerticalSpeedLimit, nVerticalSpeedLimit)
+	local vSafeNextVelocity			= Vector3.new(vSafePlanarVelocity.x, nVerticalVelocity, vSafePlanarVelocity.z)
 
-	oPhysicalCapsule:SetLinearVelocity(Vector3.new(vPlanarVelocity.x, vCurrentVelocity.y, vPlanarVelocity.z))
+	if nPlanarSpeedSq > nMaxPlanarSpeedSq and nPlanarSpeedSq > 0.0 then
+		local nPlanarSpeed			= math.sqrt(nPlanarSpeedSq)
+		local nPlanarNormalizeScale	= nMaxPlanarSpeed / nPlanarSpeed
+
+		vSafePlanarVelocity	= Vector3.new(vSafePlanarVelocity.x * nPlanarNormalizeScale, 0, vSafePlanarVelocity.z * nPlanarNormalizeScale)
+		vSafeNextVelocity	= Vector3.new(vSafePlanarVelocity.x, nVerticalVelocity, vSafePlanarVelocity.z)
+	end
+
+	local nNextSpeedSq		= (vSafeNextVelocity.x * vSafeNextVelocity.x) + (vSafeNextVelocity.y * vSafeNextVelocity.y) + (vSafeNextVelocity.z * vSafeNextVelocity.z)
+	local nMaxTotalSpeed		= self.MAX_TOTAL_SPEED
+	local nMaxTotalSpeedSq	= nMaxTotalSpeed * nMaxTotalSpeed
+
+	if nNextSpeedSq > nMaxTotalSpeedSq and nNextSpeedSq > 0.0 then
+		local nNextSpeed			= math.sqrt(nNextSpeedSq)
+		local nTotalNormalizeScale	= nMaxTotalSpeed / nNextSpeed
+
+		vSafeNextVelocity	= vSafeNextVelocity * nTotalNormalizeScale
+	end
+
+	local bIsSafeNextVelocityValid	= self:IsFiniteVector3(vSafeNextVelocity)
+	local vFinalVelocity		= bIsSafeNextVelocityValid and vSafeNextVelocity or Vector3.new(0, 0, 0)
+
+	oPhysicalCapsule:SetLinearVelocity(vFinalVelocity)
 end
 
 function Controller:IsGrounded()
@@ -230,6 +267,16 @@ end
 
 function Controller:GetLastInputDirection()
 	return self._private.vLastInputDirection
+end
+
+function Controller:IsFiniteNumber(nValue)
+	return nValue == nValue and nValue ~= math.huge and nValue ~= -math.huge
+end
+
+function Controller:IsFiniteVector3(vValue)
+	if not vValue then return false end
+
+	return self:IsFiniteNumber(vValue.x) and self:IsFiniteNumber(vValue.y) and self:IsFiniteNumber(vValue.z)
 end
 
 return Controller
