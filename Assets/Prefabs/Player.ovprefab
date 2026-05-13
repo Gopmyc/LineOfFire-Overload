@@ -129,6 +129,10 @@
                         <data/>
                     </behaviour>
                     <behaviour>
+                        <type>Scripts/Player/Animation/PlayerArmIK.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
                         <type>Scripts/Player/Weapon/WeaponHolder.lua</type>
                         <data/>
                     </behaviour>
