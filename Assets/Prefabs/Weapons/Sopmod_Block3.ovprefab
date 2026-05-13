@@ -5,8 +5,8 @@
                 <name>Sopmod_Block3</name>
                 <tag></tag>
                 <active>true</active>
-                <id>48</id>
-                <guid>669594468856424136</guid>
+                <id>129</id>
+                <guid>15181633247600687285</guid>
                 <prefab_source>Prefabs/Weapons/Sopmod_Block3.ovprefab</prefab_source>
                 <prefab_node_guid>1118434742645547481</prefab_node_guid>
                 <parent>0</parent>
@@ -74,19 +74,19 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>49</id>
-                <guid>14653622724067816434</guid>
+                <id>130</id>
+                <guid>13338944376255769666</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>18255031475517384145</prefab_node_guid>
-                <parent>48</parent>
+                <parent>129</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>-0.83029056</x>
-                                <y>-0.29494667</y>
-                                <z>2.9802322e-08</z>
+                                <x>-0.89999998</x>
+                                <y>-0.30000001</y>
+                                <z>0.2</z>
                             </position>
                             <rotation>
                                 <x>0</x>
@@ -108,19 +108,19 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>50</id>
-                <guid>5555360714689901031</guid>
+                <id>131</id>
+                <guid>17183290775692970827</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5975057889999898857</prefab_node_guid>
-                <parent>48</parent>
+                <parent>129</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>0.69977379</x>
+                                <x>0.51903701</x>
                                 <y>0.050734043</y>
-                                <z>2.9802322e-08</z>
+                                <z>-0.20440766</z>
                             </position>
                             <rotation>
                                 <x>0</x>

@@ -5,9 +5,9 @@
                 <name>Sig_Sauer_P320</name>
                 <tag></tag>
                 <active>true</active>
-                <id>43</id>
-                <guid>5882440137319738338</guid>
-                <prefab_source></prefab_source>
+                <id>146</id>
+                <guid>10384341790072891334</guid>
+                <prefab_source>Prefabs/Weapons/Sig_Sauer_P320.ovprefab</prefab_source>
                 <prefab_node_guid>5882440137319738338</prefab_node_guid>
                 <parent>0</parent>
                 <components>
@@ -75,11 +75,11 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>46</id>
-                <guid>15125949784830113651</guid>
+                <id>147</id>
+                <guid>16678005570848395084</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>15125949784830113651</prefab_node_guid>
-                <parent>43</parent>
+                <parent>146</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -109,11 +109,11 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>47</id>
-                <guid>4425285918971633302</guid>
+                <id>148</id>
+                <guid>12261007463520070928</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>4425285918971633302</prefab_node_guid>
-                <parent>43</parent>
+                <parent>146</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>

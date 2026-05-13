@@ -5,8 +5,8 @@
                 <name>Player</name>
                 <tag></tag>
                 <active>true</active>
-                <id>94</id>
-                <guid>14785917676265497122</guid>
+                <id>139</id>
+                <guid>11266969111662352184</guid>
                 <prefab_source>Prefabs/Player.ovprefab</prefab_source>
                 <prefab_node_guid>2715281165982403010</prefab_node_guid>
                 <parent>0</parent>
@@ -52,11 +52,11 @@
                 <name>Player Physics</name>
                 <tag></tag>
                 <active>true</active>
-                <id>95</id>
-                <guid>9089184481631060442</guid>
+                <id>140</id>
+                <guid>7437039182439202848</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>15159312095306512330</prefab_node_guid>
-                <parent>94</parent>
+                <parent>139</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -129,12 +129,12 @@
                         <data/>
                     </behaviour>
                     <behaviour>
-                        <type>Scripts/Player/Animation/PlayerArmIK.lua</type>
-                        <data/>
-                    </behaviour>
-                    <behaviour>
                         <type>Scripts/Player/Weapon/WeaponHolder.lua</type>
-                        <data/>
+                        <data>
+                            <script_properties>
+                                <oDefaultWeaponActor type="actor">15181633247600687285</oDefaultWeaponActor>
+                            </script_properties>
+                        </data>
                     </behaviour>
                     <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
@@ -146,11 +146,11 @@
                 <name>Player Model</name>
                 <tag></tag>
                 <active>true</active>
-                <id>96</id>
-                <guid>4691174245937455351</guid>
+                <id>141</id>
+                <guid>4157354146594806438</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>11683098742382515163</prefab_node_guid>
-                <parent>95</parent>
+                <parent>140</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -177,7 +177,7 @@
                         <type>class OvCore::ECS::Components::CModelRenderer</type>
                         <data>
                             <model>Models/Player/Player Model.fbx</model>
-                            <frustum_behaviour>2</frustum_behaviour>
+                            <frustum_behaviour>0</frustum_behaviour>
                             <custom_bounding_sphere_position>
                                 <x>0</x>
                                 <y>0</y>
@@ -218,17 +218,22 @@
                         </data>
                     </component>
                 </components>
-                <behaviours/>
+                <behaviours>
+                    <behaviour>
+                        <type>Scripts/Player/Animation/PlayerArmIK.lua</type>
+                        <data/>
+                    </behaviour>
+                </behaviours>
             </actor>
             <actor>
                 <name>Player Camera</name>
                 <tag></tag>
                 <active>true</active>
-                <id>97</id>
-                <guid>15381339666913433737</guid>
+                <id>142</id>
+                <guid>1104332179800296402</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>1445865113735604112</prefab_node_guid>
-                <parent>96</parent>
+                <parent>141</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -254,9 +259,9 @@
                     <component>
                         <type>class OvCore::ECS::Components::CCamera</type>
                         <data>
-                            <fov>110</fov>
+                            <fov>100</fov>
                             <size>5</size>
-                            <near>0.15000001</near>
+                            <near>0.001</near>
                             <far>1000</far>
                             <clear_color>
                                 <x>0.1921569</x>
@@ -275,11 +280,11 @@
                 <name>WeaponSocket</name>
                 <tag></tag>
                 <active>true</active>
-                <id>98</id>
-                <guid>17241905772492346411</guid>
+                <id>143</id>
+                <guid>1900338924703485419</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>13657967729575309312</prefab_node_guid>
-                <parent>97</parent>
+                <parent>142</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -309,11 +314,11 @@
                 <name>Hand_R_Target</name>
                 <tag></tag>
                 <active>true</active>
-                <id>99</id>
-                <guid>7958854231137338401</guid>
+                <id>144</id>
+                <guid>653037425533334526</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>16533161397411065856</prefab_node_guid>
-                <parent>96</parent>
+                <parent>141</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -343,11 +348,11 @@
                 <name>Hand_L_Target</name>
                 <tag></tag>
                 <active>true</active>
-                <id>100</id>
-                <guid>11572977929509806744</guid>
+                <id>145</id>
+                <guid>11438489604228110399</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5552579215148020736</prefab_node_guid>
-                <parent>96</parent>
+                <parent>141</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
