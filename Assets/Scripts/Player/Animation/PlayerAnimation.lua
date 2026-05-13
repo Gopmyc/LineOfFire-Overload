@@ -6,45 +6,13 @@ local PlayerAnimation	=
 	_private	=
 	{
 		sModelActorName			= "Player Model",
-		tStateNames				=
-		{
-			sIdle				= "Idle",
-			sWalking			= "Walking",
-			sRunning			= "Running",
-			sCrouchingIdle		= "CrouchingIdle",
-			sCrouchingWalking	= "CrouchingWalking",
-			sJumping			= "Jumping",
-			sFalling			= "Falling",
-		},
-		tDirectionNames			=
-		{
-			sNone				= "None",
-			sForward			= "Forward",
-			sBackward			= "Backward",
-			sLeft				= "Left",
-			sRight				= "Right",
-		},
-		tOneShotTypes			=
-		{
-			sJump				= "Jump",
-			sLand				= "Land",
-		},
-		tAnimationNames			=
-		{
-			sIdle				= "ACT_IDLE",
-			sFrontWalk			= "ACT_FRONT_WALK",
-			sBackWalk			= "ACT_BACK_WALK",
-			sLeftStrafe			= "ACT_LEFT_STRAFE",
-			sRightStrafe		= "ACT_RIGHT_STRAFE",
-			sFrontRun			= "ACT_FRONT_RUN",
-			sBackRun			= "ACT_BACK_RUN",
-			sFall				= "ACT_FALL",
-			sLand				= "ACT_LAND",
-			sIdleCrouch			= "ACT_IDLE_CROUCH",
-			sFrontWalkCrouch	= "ACT_FRONT_WALK_CROUCH",
-			sLeftStrafeCrouch	= "ACT_LEFT_STRAFE_CROUCH",
-			sRightStrafeCrouch	= "ACT_RIGHT_STRAFE_CROUCH",
-			sJump				= "ACT_JUMP",
+		tStateNames				= { sIdle = "Idle", sWalking = "Walking", sRunning = "Running", sCrouchingIdle = "CrouchingIdle", sCrouchingWalking = "CrouchingWalking", sJumping = "Jumping", sFalling = "Falling" },
+		tDirectionNames			= { sNone = "None", sForward = "Forward", sBackward = "Backward", sLeft = "Left", sRight = "Right" },
+		tOneShotTypes			= { sJump = "Jump", sLand = "Land" },
+		tAnimationNames			= {
+			sIdle = "ACT_IDLE", sFrontWalk = "ACT_FRONT_WALK", sBackWalk = "ACT_BACK_WALK", sLeftStrafe = "ACT_LEFT_STRAFE", sRightStrafe = "ACT_RIGHT_STRAFE",
+			sFrontRun = "ACT_FRONT_RUN", sBackRun = "ACT_BACK_RUN", sFall = "ACT_FALL", sLand = "ACT_LAND", sIdleCrouch = "ACT_IDLE_CROUCH",
+			sFrontWalkCrouch = "ACT_FRONT_WALK_CROUCH", sLeftStrafeCrouch = "ACT_LEFT_STRAFE_CROUCH", sRightStrafeCrouch = "ACT_RIGHT_STRAFE_CROUCH", sJump = "ACT_JUMP",
 		},
 		oPlayerState			= nil,
 		oController				= nil,
@@ -57,16 +25,24 @@ local PlayerAnimation	=
 	}
 }
 
-function PlayerAnimation:OnAwake()
-	self								= setmetatable(self, self.owner:GetBehaviour("Class"))
+local tDirectionAnimationProfiles	= {
+	sWalking = { sDefault = "sFrontWalk", sBackward = "sBackWalk", sLeft = "sLeftStrafe", sRight = "sRightStrafe" },
+	sRunning = { sDefault = "sFrontRun", sBackward = "sBackRun", sLeft = "sLeftStrafe", sRight = "sRightStrafe" },
+	sCrouchingWalking = { sDefault = "sFrontWalkCrouch", sLeft = "sLeftStrafeCrouch", sRight = "sRightStrafeCrouch" },
+}
 
-	local oSkinnedMeshRenderer			= self:ResolveSkinnedMeshRenderer()
-	local oPlayerState					= self.owner:GetBehaviour("PlayerState")
-	local oController					= self.owner:GetBehaviour("Controller")
-	local oTransform					= self.owner:GetTransform()
-	local oPhysicalCapsule				= self.owner:GetPhysicalCapsule()
-	local tStateNames					= self._private.tStateNames
-	local sCurrentState					= oPlayerState and oPlayerState:GetCurrentState() or tStateNames.sIdle
+local tDirectionToProfileField	= { None = "sDefault", Forward = "sDefault", Backward = "sBackward", Left = "sLeft", Right = "sRight" }
+
+function PlayerAnimation:OnAwake()
+	self							= setmetatable(self, self.owner:GetBehaviour("Class"))
+
+	local oSkinnedMeshRenderer		= self:ResolveSkinnedMeshRenderer()
+	local oPlayerState				= self.owner:GetBehaviour("PlayerState")
+	local oController				= self.owner:GetBehaviour("Controller")
+	local oTransform				= self.owner:GetTransform()
+	local oPhysicalCapsule			= self.owner:GetPhysicalCapsule()
+	local tStateNames				= self._private.tStateNames
+	local sCurrentState				= oPlayerState and oPlayerState:GetCurrentState() or tStateNames.sIdle
 
 	self._private.oSkinnedMeshRenderer	= oSkinnedMeshRenderer
 	self._private.oPlayerState			= oPlayerState
@@ -96,29 +72,16 @@ function PlayerAnimation:OnUpdate(nDeltaTime)
 	end
 
 	self:UpdateOneShotPlaybackState(sCurrentState)
-	local bShouldApplyLoopAnimation	= true
+
+	local bShouldPlayLoopAnimation	= self._private.sActiveOneShotType == nil
 
 	if bDidStateChange and self:ShouldPlayLandOneShot(sPreviousState, sCurrentState) then
-		local bDidPlayLand	= self:PlayOneShotAnimation(tAnimationNames.sLand, tOneShotTypes.sLand)
-
-		if bDidPlayLand then
-			bShouldApplyLoopAnimation	= false
-		end
+		bShouldPlayLoopAnimation	= not self:PlayOneShotAnimation(tAnimationNames.sLand, tOneShotTypes.sLand)
+	elseif bDidStateChange and sCurrentState == tStateNames.sJumping then
+		bShouldPlayLoopAnimation	= not self:PlayOneShotAnimation(tAnimationNames.sJump, tOneShotTypes.sJump)
 	end
 
-	if bShouldApplyLoopAnimation and bDidStateChange and sCurrentState == tStateNames.sJumping then
-		local bDidPlayJump	= self:PlayOneShotAnimation(tAnimationNames.sJump, tOneShotTypes.sJump)
-
-		if bDidPlayJump then
-			bShouldApplyLoopAnimation	= false
-		end
-	end
-
-	if bShouldApplyLoopAnimation and self:IsOneShotPlaying() then
-		bShouldApplyLoopAnimation	= false
-	end
-
-	if bShouldApplyLoopAnimation then
+	if bShouldPlayLoopAnimation then
 		self:ApplyLoopAnimationFromState(sCurrentState, false)
 	end
 end
@@ -131,30 +94,8 @@ function PlayerAnimation:ResolveSkinnedMeshRenderer()
 	return oSkinnedMeshRenderer or self:FindSkinnedMeshRendererRecursive(self.owner)
 end
 
-function PlayerAnimation:FindSkinnedMeshRendererRecursive(oActor)
-	if not oActor then return nil end
-
-	local oSkinnedMeshRenderer	= oActor:GetSkinnedMeshRenderer()
-	if oSkinnedMeshRenderer then
-		return oSkinnedMeshRenderer
-	end
-
-	local tChildren	= oActor:GetChildren()
-
-	for _, oChildActor in ipairs(tChildren) do
-		local oFoundRenderer	= self:FindSkinnedMeshRendererRecursive(oChildActor)
-
-		if oFoundRenderer then
-			return oFoundRenderer
-		end
-	end
-
-	return nil
-end
-
 function PlayerAnimation:UpdateOneShotPlaybackState(sCurrentState)
 	local sActiveOneShotType	= self._private.sActiveOneShotType
-
 	if not sActiveOneShotType then return end
 
 	if self:ShouldInterruptOneShot(sActiveOneShotType, sCurrentState) then
@@ -197,10 +138,6 @@ function PlayerAnimation:IsAirState(sState)
 	return sState == tStateNames.sJumping or sState == tStateNames.sFalling
 end
 
-function PlayerAnimation:IsOneShotPlaying()
-	return self._private.sActiveOneShotType ~= nil
-end
-
 function PlayerAnimation:PlayOneShotAnimation(sAnimationName, sOneShotType)
 	local bDidPlayAnimation	= self:PlayAnimationClip(sAnimationName, false, true)
 
@@ -231,16 +168,16 @@ function PlayerAnimation:ResolveLoopAnimationName(sState)
 		return tAnimationNames.sIdleCrouch
 	end
 
-	if sState == tStateNames.sCrouchingWalking then
-		return self:ResolveDirectionalCrouchAnimation()
+	if sState == tStateNames.sWalking then
+		return self:ResolveDirectionalAnimation("sWalking")
 	end
 
 	if sState == tStateNames.sRunning then
-		return self:ResolveDirectionalRunAnimation()
+		return self:ResolveDirectionalAnimation("sRunning")
 	end
 
-	if sState == tStateNames.sWalking then
-		return self:ResolveDirectionalWalkAnimation()
+	if sState == tStateNames.sCrouchingWalking then
+		return self:ResolveDirectionalAnimation("sCrouchingWalking")
 	end
 
 	if self:IsAirState(sState) then
@@ -250,60 +187,16 @@ function PlayerAnimation:ResolveLoopAnimationName(sState)
 	return tAnimationNames.sIdle
 end
 
-function PlayerAnimation:ResolveDirectionalWalkAnimation()
-	local tDirectionNames	= self._private.tDirectionNames
-	local tAnimationNames	= self._private.tAnimationNames
-	local sDirection		= self:GetMovementDirection()
+function PlayerAnimation:ResolveDirectionalAnimation(sProfileKey)
+	local tProfile	= tDirectionAnimationProfiles[sProfileKey]
+	if not tProfile then return self._private.tAnimationNames.sIdle end
 
-	if sDirection == tDirectionNames.sBackward then
-		return tAnimationNames.sBackWalk
-	end
+	local sDirection			= self:GetMovementDirection()
+	local sProfileField			= tDirectionToProfileField[sDirection] or "sDefault"
+	local sAnimationKey			= tProfile[sProfileField] or tProfile.sDefault
+	local tAnimationNames		= self._private.tAnimationNames
 
-	if sDirection == tDirectionNames.sLeft then
-		return tAnimationNames.sLeftStrafe
-	end
-
-	if sDirection == tDirectionNames.sRight then
-		return tAnimationNames.sRightStrafe
-	end
-
-	return tAnimationNames.sFrontWalk
-end
-
-function PlayerAnimation:ResolveDirectionalRunAnimation()
-	local tDirectionNames	= self._private.tDirectionNames
-	local tAnimationNames	= self._private.tAnimationNames
-	local sDirection		= self:GetMovementDirection()
-
-	if sDirection == tDirectionNames.sBackward then
-		return tAnimationNames.sBackRun
-	end
-
-	if sDirection == tDirectionNames.sLeft then
-		return tAnimationNames.sLeftStrafe
-	end
-
-	if sDirection == tDirectionNames.sRight then
-		return tAnimationNames.sRightStrafe
-	end
-
-	return tAnimationNames.sFrontRun
-end
-
-function PlayerAnimation:ResolveDirectionalCrouchAnimation()
-	local tDirectionNames	= self._private.tDirectionNames
-	local tAnimationNames	= self._private.tAnimationNames
-	local sDirection		= self:GetMovementDirection()
-
-	if sDirection == tDirectionNames.sLeft then
-		return tAnimationNames.sLeftStrafeCrouch
-	end
-
-	if sDirection == tDirectionNames.sRight then
-		return tAnimationNames.sRightStrafeCrouch
-	end
-
-	return tAnimationNames.sFrontWalkCrouch
+	return tAnimationNames[sAnimationKey] or tAnimationNames.sIdle
 end
 
 function PlayerAnimation:GetMovementDirection()

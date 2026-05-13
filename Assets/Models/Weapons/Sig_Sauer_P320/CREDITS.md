@@ -1,0 +1,1 @@
+"low-poly SIG Sauer M17" (https://skfb.ly/pwMTQ) by D_U is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

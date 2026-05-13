@@ -200,20 +200,6 @@ function View:IsMovementInputPressed()
 	return bMoveLeft or bMoveRight or bMoveForward or bMoveBackward
 end
 
-function View:NormalizeAngle180(nAngle)
-	local nNormalizedAngle	= nAngle
-
-	while nNormalizedAngle > 180 do
-		nNormalizedAngle	= nNormalizedAngle - 360
-	end
-
-	while nNormalizedAngle < -180 do
-		nNormalizedAngle	= nNormalizedAngle + 360
-	end
-
-	return nNormalizedAngle
-end
-
 function View:HandleMouseTrackingState()
 	local bIsMouseLocked	= self._private.bIsMouseLocked
 	local bWantsUnlock		= Inputs.GetKeyDown(self.MOUSE_UNLOCK_KEY)

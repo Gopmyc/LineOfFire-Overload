@@ -3,12 +3,12 @@
         <actors>
             <actor>
                 <name>Item</name>
-                <tag>Item</tag>
+                <tag></tag>
                 <active>true</active>
-                <id>82</id>
-                <guid>11085148111636177238</guid>
-                <prefab_source>Prefabs/Item.ovprefab</prefab_source>
-                <prefab_node_guid>13580114290922150341</prefab_node_guid>
+                <id>35</id>
+                <guid>17828816889518625987</guid>
+                <prefab_source></prefab_source>
+                <prefab_node_guid>17828816889518625987</prefab_node_guid>
                 <parent>0</parent>
                 <components>
                     <component>
@@ -16,7 +16,7 @@
                         <data>
                             <position>
                                 <x>0</x>
-                                <y>1</y>
+                                <y>0</y>
                                 <z>0</z>
                             </position>
                             <rotation>
@@ -32,49 +32,23 @@
                             </scale>
                         </data>
                     </component>
-                    <component>
-                        <type>class OvCore::ECS::Components::CPhysicalSphere</type>
-                        <data>
-                            <is_trigger>true</is_trigger>
-                            <is_kinematic>true</is_kinematic>
-                            <bounciness>0</bounciness>
-                            <mass>1</mass>
-                            <friction>0.5</friction>
-                            <linear_factor>
-                                <x>1</x>
-                                <y>1</y>
-                                <z>1</z>
-                            </linear_factor>
-                            <angular_factor>
-                                <x>1</x>
-                                <y>1</y>
-                                <z>1</z>
-                            </angular_factor>
-                            <collision_mode>0</collision_mode>
-                            <radius>0.85000002</radius>
-                        </data>
-                    </component>
                 </components>
                 <behaviours>
                     <behaviour>
-                        <type>Scripts/Item/Item.lua</type>
-                        <data/>
-                    </behaviour>
-                    <behaviour>
-                        <type>Scripts/Utils/Class.lua</type>
+                        <type>Scripts/Item/Use.lua</type>
                         <data/>
                     </behaviour>
                 </behaviours>
             </actor>
             <actor>
-                <name>Item Visual</name>
+                <name>Item Model</name>
                 <tag></tag>
                 <active>true</active>
-                <id>84</id>
-                <guid>4592263405799167323</guid>
+                <id>36</id>
+                <guid>14470559694016288581</guid>
                 <prefab_source></prefab_source>
-                <prefab_node_guid>4592263405799167323</prefab_node_guid>
-                <parent>82</parent>
+                <prefab_node_guid>14470559694016288581</prefab_node_guid>
+                <parent>35</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -100,7 +74,7 @@
                     <component>
                         <type>class OvCore::ECS::Components::CModelRenderer</type>
                         <data>
-                            <model>Models/Equipment/HELMET.fbx</model>
+                            <model>Models/Equipment/JPC.fbx</model>
                             <frustum_behaviour>2</frustum_behaviour>
                             <custom_bounding_sphere_position>
                                 <x>0</x>
@@ -114,18 +88,9 @@
                         <type>class OvCore::ECS::Components::CMaterialRenderer</type>
                         <data>
                             <materials>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_0.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_1.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_2.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_3.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_4.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_5.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_6.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_7.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_8.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_9.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_10.ovmat</material>
-                                <material>Models/Equipment/HELMET.fbx:embedded_material_11.ovmat</material>
+                                <material>Models/Equipment/JPC.fbx:embedded_material_0.ovmat</material>
+                                <material>Models/Equipment/JPC.fbx:embedded_material_1.ovmat</material>
+                                <material>Models/Equipment/JPC.fbx:embedded_material_2.ovmat</material>
                             </materials>
                             <visibility_flags>7</visibility_flags>
                         </data>
