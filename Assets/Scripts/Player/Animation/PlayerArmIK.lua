@@ -1,11 +1,12 @@
 ---@class PlayerArmIK : Behaviour
 local PlayerArmIK	=
 {
-	bEnableIK				= true,
-	nIKRotationSmoothSpeed	= 20.0,
-	nIKTargetMargin			= 0.02,
-	nIKEpsilon				= 0.0001,
-	bEnableIKLogs			= false,
+	bEnableIK					= true,
+	nIKRotationSmoothSpeed		= 20.0,
+	nIKBendNormalSmoothSpeed	= 14.0,
+	nIKTargetMargin				= 0.02,
+	nIKEpsilon					= 0.0001,
+	bEnableIKLogs				= false,
 
 	_private	=
 	{
@@ -14,6 +15,7 @@ local PlayerArmIK	=
 		oModelTransform		= nil,
 		oWeaponHolder		= nil,
 		tBoneIndices		= {},
+		tArmRuntimeByName	= {},
 	}
 }
 
@@ -61,10 +63,14 @@ function PlayerArmIK:OnAwake()
 	self._private.oModelTransform		= self:ResolveModelTransform()
 	self._private.oWeaponHolder			= self.owner:GetBehaviour("WeaponHolder")
 	self._private.tBoneIndices			= self:ResolveBoneIndices(self._private.oSkinnedMeshRenderer)
+	self:InitializeArmRuntime()
 end
 
 function PlayerArmIK:OnLateUpdate(nDeltaTime)
-	if not self.bEnableIK then return end
+	if not self.bEnableIK then
+		self:ResetAllArmRuntime()
+		return
+	end
 
 	local oSkinnedMeshRenderer	= self._private.oSkinnedMeshRenderer
 	local oModelTransform		= self._private.oModelTransform
@@ -73,7 +79,10 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 	if not oSkinnedMeshRenderer or not oModelTransform or not oWeaponHolder then return end
 
 	local tGripTargetsWorld	= self:ResolveWeaponGripTargetsWorld(oWeaponHolder)
-	if not tGripTargetsWorld then return end
+	if not tGripTargetsWorld then
+		self:ResetAllArmRuntime()
+		return
+	end
 
 	for _, tArmConfig in ipairs(tArmConfigs) do
 		local sWeaponGripKey	= tArmConfig.sWeaponGripKey
@@ -81,7 +90,13 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 		local vGripModel		= vGripWorld and self:WorldToModelPosition(oModelTransform, vGripWorld) or nil
 
 		if vGripModel then
-			self:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vGripModel, nDeltaTime)
+			local bDidSolveArm	= self:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vGripModel, nDeltaTime)
+
+			if not bDidSolveArm then
+				self:ResetArmRuntime(tArmConfig)
+			end
+		else
+			self:ResetArmRuntime(tArmConfig)
 		end
 	end
 end
@@ -110,6 +125,58 @@ function PlayerArmIK:ResolveBoneIndices(oSkinnedMeshRenderer)
 	end
 
 	return tBoneIndices
+end
+
+function PlayerArmIK:InitializeArmRuntime()
+	local tArmRuntimeByName	= {}
+
+	for _, tArmConfig in ipairs(tArmConfigs) do
+		tArmRuntimeByName[tArmConfig.sName]	=
+		{
+			qUpperLocalRotation		= nil,
+			qForeArmLocalRotation	= nil,
+			vBendPlaneNormal		= nil,
+		}
+	end
+
+	self._private.tArmRuntimeByName	= tArmRuntimeByName
+end
+
+function PlayerArmIK:GetArmRuntime(tArmConfig)
+	local tArmRuntimeByName	= self._private.tArmRuntimeByName
+	local sArmName			= tArmConfig and tArmConfig.sName or nil
+	local tArmRuntime		= sArmName and tArmRuntimeByName[sArmName] or nil
+
+	if tArmRuntime then
+		return tArmRuntime
+	end
+
+	tArmRuntime	=
+	{
+		qUpperLocalRotation		= nil,
+		qForeArmLocalRotation	= nil,
+		vBendPlaneNormal		= nil,
+	}
+
+	if sArmName then
+		tArmRuntimeByName[sArmName]	= tArmRuntime
+	end
+
+	return tArmRuntime
+end
+
+function PlayerArmIK:ResetArmRuntime(tArmConfig)
+	local tArmRuntime	= self:GetArmRuntime(tArmConfig)
+
+	tArmRuntime.qUpperLocalRotation		= nil
+	tArmRuntime.qForeArmLocalRotation	= nil
+	tArmRuntime.vBendPlaneNormal		= nil
+end
+
+function PlayerArmIK:ResetAllArmRuntime()
+	for _, tArmConfig in ipairs(tArmConfigs) do
+		self:ResetArmRuntime(tArmConfig)
+	end
 end
 
 function PlayerArmIK:ResolveWeaponGripTargetsWorld(oWeaponHolder)
@@ -141,6 +208,7 @@ function PlayerArmIK:WorldToModelPosition(oModelTransform, vWorldPosition)
 end
 
 function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTargetModelPosition, nDeltaTime)
+	local tArmRuntime		= self:GetArmRuntime(tArmConfig)
 	local tInitialChainPose	= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
 	if not tInitialChainPose then return false end
 
@@ -194,10 +262,16 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	local nUpperProjection		= nUpperLength * nUpperCos
 	local nUpperPerpendicularSq	= (nUpperLength * nUpperLength) - (nUpperProjection * nUpperProjection)
 	local nUpperPerpendicular	= nUpperPerpendicularSq > 0.0 and math.sqrt(nUpperPerpendicularSq) or 0.0
-	local vCurrentBend			= vForeArmPosition - vArmPosition
-	local vProjectedBend		= vCurrentBend - (vTargetDirection * vCurrentBend:Dot(vTargetDirection))
+	local nArmSideSign			= tArmConfig.sName == "RightArm" and -1.0 or 1.0
+	local vShoulderUp			= tShoulderPose.qModelRotation * Vector3.new(0, 1, 0)
+	local vShoulderSide			= tShoulderPose.qModelRotation * Vector3.new(nArmSideSign, 0, 0)
+	local vCurrentBendNormal	= vUpperSegment:Cross(vLowerSegment)
+	local vFallbackPlaneNormalA	= vTargetDirection:Cross(vShoulderUp)
+	local vFallbackPlaneNormalB	= vTargetDirection:Cross(vShoulderSide)
+	local vFallbackPlaneNormal	= self:NormalizeVector3(vFallbackPlaneNormalA, vFallbackPlaneNormalB)
+	local vBendPlaneNormal		= self:ResolveStableBendPlaneNormal(tArmRuntime, vCurrentBendNormal, vFallbackPlaneNormal, nDeltaTime)
 	local vFallbackBend			= tArmPose.qModelRotation * Vector3.new(0, 1, 0)
-	local vBendDirection		= self:NormalizeVector3(vProjectedBend, vFallbackBend)
+	local vBendDirection		= self:NormalizeVector3(vBendPlaneNormal:Cross(vTargetDirection), vFallbackBend)
 	local vElbowTargetPosition	= vArmPosition + (vTargetDirection * nUpperProjection) + (vBendDirection * nUpperPerpendicular)
 	local vUpperCurrentDirection	= self:NormalizeVector3(vUpperSegment, vTargetDirection)
 	local vUpperTargetDirection	= self:NormalizeVector3(vElbowTargetPosition - vArmPosition, vUpperCurrentDirection)
@@ -206,10 +280,11 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	local qShoulderWorldInverse	= self:InverseQuaternion(tShoulderPose.qModelRotation)
 	local qUpperLocalTarget		= qShoulderWorldInverse * qUpperWorldTarget
 	local nRotationAlpha		= self:Clamp(nDeltaTime * self.nIKRotationSmoothSpeed, 0.0, 1.0)
-	local qUpperLocalCurrent	= oSkinnedMeshRenderer:GetBoneLocalRotation(tArmPose.nBoneIndex)
+	local qUpperLocalCurrent	= tArmRuntime.qUpperLocalRotation or oSkinnedMeshRenderer:GetBoneLocalRotation(tArmPose.nBoneIndex)
 	local qUpperLocalBlended	= qUpperLocalCurrent and self:BlendQuaternion(qUpperLocalCurrent, qUpperLocalTarget, nRotationAlpha) or qUpperLocalTarget
 
 	oSkinnedMeshRenderer:SetBoneLocalRotation(tArmPose.nBoneIndex, qUpperLocalBlended)
+	tArmRuntime.qUpperLocalRotation	= qUpperLocalBlended
 
 	local tUpdatedChainPose		= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
 	local tUpdatedForeArmPose	= tUpdatedChainPose and tUpdatedChainPose[tArmConfig.sForeArmKey] or nil
@@ -229,10 +304,11 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	local qForeArmWorldTarget		= qForeArmWorldDelta * tUpdatedForeArmPose.qModelRotation
 	local qArmWorldInverse			= self:InverseQuaternion(tUpdatedChainPose[tArmConfig.sArmKey].qModelRotation)
 	local qForeArmLocalTarget		= qArmWorldInverse * qForeArmWorldTarget
-	local qForeArmLocalCurrent		= oSkinnedMeshRenderer:GetBoneLocalRotation(tUpdatedForeArmPose.nBoneIndex)
+	local qForeArmLocalCurrent		= tArmRuntime.qForeArmLocalRotation or oSkinnedMeshRenderer:GetBoneLocalRotation(tUpdatedForeArmPose.nBoneIndex)
 	local qForeArmLocalBlended		= qForeArmLocalCurrent and self:BlendQuaternion(qForeArmLocalCurrent, qForeArmLocalTarget, nRotationAlpha) or qForeArmLocalTarget
 
 	oSkinnedMeshRenderer:SetBoneLocalRotation(tUpdatedForeArmPose.nBoneIndex, qForeArmLocalBlended)
+	tArmRuntime.qForeArmLocalRotation	= qForeArmLocalBlended
 
 	return true
 end
@@ -273,6 +349,35 @@ function PlayerArmIK:BuildBoneChainPose(oSkinnedMeshRenderer, tChainKeys)
 	end
 
 	return tChainPose
+end
+
+function PlayerArmIK:ResolveStableBendPlaneNormal(tArmRuntime, vCurrentBendNormalRaw, vFallbackPlaneNormal, nDeltaTime)
+	local vCurrentBendNormal	= self:NormalizeVector3(vCurrentBendNormalRaw, vFallbackPlaneNormal)
+	local vCachedBendNormal		= tArmRuntime and tArmRuntime.vBendPlaneNormal or nil
+
+	if not vCachedBendNormal then
+		if tArmRuntime then
+			tArmRuntime.vBendPlaneNormal	= vCurrentBendNormal
+		end
+
+		return vCurrentBendNormal
+	end
+
+	local nConsistencyDot			= vCachedBendNormal:Dot(vCurrentBendNormal)
+	local vConsistentCurrentNormal	= nConsistencyDot < 0.0 and (vCurrentBendNormal * -1.0) or vCurrentBendNormal
+	local nBendNormalAlpha			= self:Clamp(nDeltaTime * self.nIKBendNormalSmoothSpeed, 0.0, 1.0)
+	local nCachedWeight				= 1.0 - nBendNormalAlpha
+	local nCurrentWeight			= nBendNormalAlpha
+	local vBlendedNormal			= self:NormalizeVector3(
+		(vCachedBendNormal * nCachedWeight) + (vConsistentCurrentNormal * nCurrentWeight),
+		vConsistentCurrentNormal
+	)
+
+	if tArmRuntime then
+		tArmRuntime.vBendPlaneNormal	= vBlendedNormal
+	end
+
+	return vBlendedNormal
 end
 
 function PlayerArmIK:NormalizeVector3(vValue, vFallback)
