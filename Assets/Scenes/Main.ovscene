@@ -411,7 +411,7 @@
                             <position>
                                 <x>0</x>
                                 <y>0</y>
-                                <z>-5.1860237</z>
+                                <z>0</z>
                             </position>
                             <rotation>
                                 <x>0</x>
@@ -430,6 +430,10 @@
                 <behaviours>
                     <behaviour>
                         <type>Scripts/Player/Movement/View.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Player/Movement/PhysicsRootStabilizer.lua</type>
                         <data/>
                     </behaviour>
                     <behaviour>
@@ -454,7 +458,7 @@
                             <position>
                                 <x>0.8714838</x>
                                 <y>3</y>
-                                <z>0</z>
+                                <z>-5.1860237</z>
                             </position>
                             <rotation>
                                 <x>0</x>
