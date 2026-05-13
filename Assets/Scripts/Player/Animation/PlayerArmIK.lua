@@ -44,6 +44,7 @@ local tArmConfigs	=
 		sForeArmKey		= "sRightForeArm",
 		sHandKey		= "sRightHand",
 		sWeaponGripKey	= "sRightGrip",
+		nElbowBendSign	= -1.0,
 		tChainKeys		= { "sHips", "sSpine", "sSpine1", "sSpine2", "sRightShoulder", "sRightArm", "sRightForeArm", "sRightHand" },
 	},
 	{
@@ -53,15 +54,16 @@ local tArmConfigs	=
 		sForeArmKey		= "sLeftForeArm",
 		sHandKey		= "sLeftHand",
 		sWeaponGripKey	= "sLeftGrip",
+		nElbowBendSign	= 1.0,
 		tChainKeys		= { "sHips", "sSpine", "sSpine1", "sSpine2", "sLeftShoulder", "sLeftArm", "sLeftForeArm", "sLeftHand" },
 	},
 }
 
 function PlayerArmIK:OnAwake()
-	self								= setmetatable(self, self.owner:GetBehaviour("Class"))
+	self								= setmetatable(self, self:ResolveClassBehaviour())
 	self._private.oSkinnedMeshRenderer	= self:ResolveSkinnedMeshRenderer()
 	self._private.oModelTransform		= self:ResolveModelTransform()
-	self._private.oWeaponHolder			= self.owner:GetBehaviour("WeaponHolder")
+	self._private.oWeaponHolder			= self:FindBehaviourInParents(self.owner, "WeaponHolder")
 	self._private.tBoneIndices			= self:ResolveBoneIndices(self._private.oSkinnedMeshRenderer)
 	self:InitializeArmRuntime()
 end
@@ -107,6 +109,22 @@ function PlayerArmIK:ResolveSkinnedMeshRenderer()
 	local oSkinnedMeshRenderer	= oModelActor and oModelActor:GetSkinnedMeshRenderer() or nil
 
 	return oSkinnedMeshRenderer or self:FindSkinnedMeshRendererRecursive(self.owner)
+end
+
+function PlayerArmIK:ResolveClassBehaviour()
+	local oCurrentActor	= self.owner
+
+	while oCurrentActor do
+		local oClass	= oCurrentActor:GetBehaviour("Class")
+
+		if oClass then
+			return oClass.ResolveClassBehaviour and oClass.ResolveClassBehaviour(self.owner) or oClass
+		end
+
+		oCurrentActor	= oCurrentActor:GetParent()
+	end
+
+	return {}
 end
 
 function PlayerArmIK:ResolveModelTransform()
@@ -262,16 +280,17 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	local nUpperProjection		= nUpperLength * nUpperCos
 	local nUpperPerpendicularSq	= (nUpperLength * nUpperLength) - (nUpperProjection * nUpperProjection)
 	local nUpperPerpendicular	= nUpperPerpendicularSq > 0.0 and math.sqrt(nUpperPerpendicularSq) or 0.0
-	local nArmSideSign			= tArmConfig.sName == "RightArm" and -1.0 or 1.0
-	local vShoulderUp			= tShoulderPose.qModelRotation * Vector3.new(0, 1, 0)
-	local vShoulderSide			= tShoulderPose.qModelRotation * Vector3.new(nArmSideSign, 0, 0)
-	local vCurrentBendNormal	= vUpperSegment:Cross(vLowerSegment)
-	local vFallbackPlaneNormalA	= vTargetDirection:Cross(vShoulderUp)
-	local vFallbackPlaneNormalB	= vTargetDirection:Cross(vShoulderSide)
-	local vFallbackPlaneNormal	= self:NormalizeVector3(vFallbackPlaneNormalA, vFallbackPlaneNormalB)
-	local vBendPlaneNormal		= self:ResolveStableBendPlaneNormal(tArmRuntime, vCurrentBendNormal, vFallbackPlaneNormal, nDeltaTime)
-	local vFallbackBend			= tArmPose.qModelRotation * Vector3.new(0, 1, 0)
-	local vBendDirection		= self:NormalizeVector3(vBendPlaneNormal:Cross(vTargetDirection), vFallbackBend)
+	local nArmSideSign				= tArmConfig.sName == "RightArm" and -1.0 or 1.0
+	local nElbowBendSign			= tArmConfig.nElbowBendSign or 1.0
+	local vShoulderUp				= tShoulderPose.qModelRotation * Vector3.new(0, 1, 0)
+	local vShoulderSide				= tShoulderPose.qModelRotation * Vector3.new(nArmSideSign, 0, 0)
+	local vCurrentBendNormalRaw		= vUpperSegment:Cross(vLowerSegment) * nElbowBendSign
+	local vFallbackPlaneNormalA		= vTargetDirection:Cross(vShoulderUp) * nElbowBendSign
+	local vFallbackPlaneNormalB		= vTargetDirection:Cross(vShoulderSide) * nElbowBendSign
+	local vFallbackPlaneNormal		= self:NormalizeVector3(vFallbackPlaneNormalA, vFallbackPlaneNormalB)
+	local vBendPlaneNormal			= self:ResolveStableBendPlaneNormal(tArmRuntime, vCurrentBendNormalRaw, vFallbackPlaneNormal, nDeltaTime)
+	local vFallbackBend				= (tArmPose.qModelRotation * Vector3.new(0, 1, 0)) * nElbowBendSign
+	local vBendDirection			= self:NormalizeVector3(vBendPlaneNormal:Cross(vTargetDirection), vFallbackBend)
 	local vElbowTargetPosition	= vArmPosition + (vTargetDirection * nUpperProjection) + (vBendDirection * nUpperPerpendicular)
 	local vUpperCurrentDirection	= self:NormalizeVector3(vUpperSegment, vTargetDirection)
 	local vUpperTargetDirection	= self:NormalizeVector3(vElbowTargetPosition - vArmPosition, vUpperCurrentDirection)
