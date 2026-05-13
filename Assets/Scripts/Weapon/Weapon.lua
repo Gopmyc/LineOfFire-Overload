@@ -5,6 +5,7 @@ local Weapon	=
 	sHandLeftActorName		= "Hand_L",
 	bAlignForwardToHands	= true,
 	bAnchorRightHandToSocket	= true,
+	nDynamicYawOffsetLimit		= 35.0,
 	nEquipOffsetX			= 0.0,
 	nEquipOffsetY			= 0.0,
 	nEquipOffsetZ			= 0.0,
@@ -25,6 +26,7 @@ local Weapon	=
 		bIsEquipped			= false,
 		bDidLogMissingHandR	= false,
 		bDidLogMissingHandL	= false,
+		nDynamicYawOffsetY	= 0.0,
 	}
 }
 
@@ -127,8 +129,9 @@ function Weapon:ApplyEquipOffset()
 
 	if not oRootTransform then return end
 
-	local nAutoYaw		= self:ResolveAutoGripYawAngle()
-	local nEquipYaw		= self.nEquipRotationY + nAutoYaw
+	local nAutoYaw			= self:ResolveAutoGripYawAngle()
+	local nDynamicYawOffsetY	= self._private.nDynamicYawOffsetY or 0.0
+	local nEquipYaw			= self.nEquipRotationY + nAutoYaw + nDynamicYawOffsetY
 	local qEquipRotation	= Quaternion.new(Vector3.new(self.nEquipRotationX, nEquipYaw, self.nEquipRotationZ))
 	local vEquipOffset		= Vector3.new(self.nEquipOffsetX, self.nEquipOffsetY, self.nEquipOffsetZ)
 
@@ -143,6 +146,25 @@ function Weapon:ApplyEquipOffset()
 
 	oRootTransform:SetLocalPosition(vEquipOffset)
 	oRootTransform:SetLocalRotation(qEquipRotation)
+end
+
+function Weapon:SetDynamicYawOffsetY(nYawOffset)
+	local nOffset	= nYawOffset or 0.0
+	local nLimit	= math.abs(self.nDynamicYawOffsetLimit or 0.0)
+
+	if nLimit > 0.0 then
+		nOffset	= nOffset < -nLimit and -nLimit or (nOffset > nLimit and nLimit or nOffset)
+	end
+
+	self._private.nDynamicYawOffsetY	= nOffset
+end
+
+function Weapon:GetDynamicYawOffsetY()
+	return self._private.nDynamicYawOffsetY or 0.0
+end
+
+function Weapon:ResetDynamicYawOffsetY()
+	self._private.nDynamicYawOffsetY	= 0.0
 end
 
 function Weapon:ResolveAutoGripYawAngle()
