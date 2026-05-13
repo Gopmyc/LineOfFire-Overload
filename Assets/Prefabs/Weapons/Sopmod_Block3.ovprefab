@@ -59,7 +59,16 @@
                         </data>
                     </component>
                 </components>
-                <behaviours/>
+                <behaviours>
+                    <behaviour>
+                        <type>Scripts/Weapon/Weapon.lua</type>
+                        <data/>
+                    </behaviour>
+                    <behaviour>
+                        <type>Scripts/Utils/Class.lua</type>
+                        <data/>
+                    </behaviour>
+                </behaviours>
             </actor>
             <actor>
                 <name>Hand_R</name>
