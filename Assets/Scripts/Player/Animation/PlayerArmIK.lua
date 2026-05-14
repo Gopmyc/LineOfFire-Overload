@@ -6,11 +6,19 @@ local PlayerArmIK	=
 	nIKBendNormalSmoothSpeed	= 14.0,
 	nIKTargetMargin				= 0.02,
 	nIKEpsilon					= 0.0001,
+	bEnableShoulderAssist			= true,
+	nShoulderAssistWeight			= 0.35,
+	nShoulderAssistSmoothSpeed		= 10.0,
+	bEnableHandRotationAlignment		= true,
+	nHandRotationSmoothSpeed		= 24.0,
+	nHandRotationWeight			= 0.9,
 	bEnableWeaponYawAssist		= true,
-	nWeaponYawAssistSpeed		= 14.0,
-	nWeaponYawAssistReturnSpeed	= 6.0,
-	nWeaponYawAssistMaxOffset	= 30.0,
+	nWeaponYawAssistSpeed		= 40.0,
+	nWeaponYawAssistReturnSpeed	= 10.0,
+	nWeaponYawAssistMaxOffset	= 45.0,
+	nWeaponYawAssistGain		= 1.5,
 	nWeaponYawAssistDeadZone	= 0.005,
+	nWeaponYawAssistAngleDeadZone	= 0.35,
 	nWeaponYawAssistSign		= 1.0,
 	bEnableIKLogs				= false,
 
@@ -24,6 +32,7 @@ local PlayerArmIK	=
 		tArmRuntimeByName	= {},
 		nWeaponYawAssistCurrent	= 0.0,
 		oWeaponYawAssistLastWeapon	= nil,
+		oCurrentWeapon		= nil,
 	}
 }
 
@@ -53,6 +62,9 @@ local tArmConfigs	=
 		sHandKey		= "sRightHand",
 		sWeaponGripKey	= "sRightGrip",
 		nElbowBendSign	= -1.0,
+		nDefaultGripOffsetX	= 0.0,
+		nDefaultGripOffsetY	= 0.0,
+		nDefaultGripOffsetZ	= 0.0,
 		tChainKeys		= { "sHips", "sSpine", "sSpine1", "sSpine2", "sRightShoulder", "sRightArm", "sRightForeArm", "sRightHand" },
 	},
 	{
@@ -63,6 +75,9 @@ local tArmConfigs	=
 		sHandKey		= "sLeftHand",
 		sWeaponGripKey	= "sLeftGrip",
 		nElbowBendSign	= 1.0,
+		nDefaultGripOffsetX	= 0.0,
+		nDefaultGripOffsetY	= 0.0,
+		nDefaultGripOffsetZ	= 0.0,
 		tChainKeys		= { "sHips", "sSpine", "sSpine1", "sSpine2", "sLeftShoulder", "sLeftArm", "sLeftForeArm", "sLeftHand" },
 	},
 }
@@ -78,35 +93,40 @@ end
 
 function PlayerArmIK:OnLateUpdate(nDeltaTime)
 	local oWeaponHolder			= self._private.oWeaponHolder
-	local oWeapon			= oWeaponHolder and oWeaponHolder.GetEquippedWeapon and oWeaponHolder:GetEquippedWeapon() or nil
+	local oWeapon				= oWeaponHolder and oWeaponHolder.GetEquippedWeapon and oWeaponHolder:GetEquippedWeapon() or nil
 	local oSkinnedMeshRenderer	= self._private.oSkinnedMeshRenderer
-	local oModelTransform		= self._private.oModelTransform
+	local oModelTransform			= self._private.oModelTransform
+
+	self._private.oCurrentWeapon		= oWeapon
 
 	if not self.bEnableIK then
 		self:ResetAllArmRuntime()
-		self:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime, nil)
+		self:UpdateWeaponYawAssist(oWeapon, oSkinnedMeshRenderer, oModelTransform, nDeltaTime, nil)
 		return
 	end
 
 	if not oSkinnedMeshRenderer or not oModelTransform or not oWeaponHolder then
-		self:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime, nil)
+		self:UpdateWeaponYawAssist(oWeapon, oSkinnedMeshRenderer, oModelTransform, nDeltaTime, nil)
 		return
 	end
 
 	local tGripTargetsWorld	= self:ResolveWeaponGripTargetsWorld(oWeapon)
+	self:UpdateWeaponYawAssist(oWeapon, oSkinnedMeshRenderer, oModelTransform, nDeltaTime, tGripTargetsWorld)
+
+	tGripTargetsWorld	= self:ResolveWeaponGripTargetsWorld(oWeapon)
 	if not tGripTargetsWorld then
 		self:ResetAllArmRuntime()
-		self:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime, nil)
 		return
 	end
 
 	for _, tArmConfig in ipairs(tArmConfigs) do
-		local sWeaponGripKey	= tArmConfig.sWeaponGripKey
-		local vGripWorld		= tGripTargetsWorld[sWeaponGripKey]
+		local sWeaponGripKey		= tArmConfig.sWeaponGripKey
+		local tGripTarget		= tGripTargetsWorld[sWeaponGripKey]
+		local vGripWorld		= tGripTarget and tGripTarget.vWorldPosition or nil
 		local vGripModel		= vGripWorld and self:WorldToModelPosition(oModelTransform, vGripWorld) or nil
 
 		if vGripModel then
-			local bDidSolveArm	= self:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vGripModel, nDeltaTime)
+			local bDidSolveArm	= self:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vGripModel, tGripTarget, nDeltaTime)
 
 			if not bDidSolveArm then
 				self:ResetArmRuntime(tArmConfig)
@@ -115,8 +135,6 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 			self:ResetArmRuntime(tArmConfig)
 		end
 	end
-
-	self:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime, tGripTargetsWorld)
 end
 
 function PlayerArmIK:ResolveSkinnedMeshRenderer()
@@ -167,8 +185,10 @@ function PlayerArmIK:InitializeArmRuntime()
 	for _, tArmConfig in ipairs(tArmConfigs) do
 		tArmRuntimeByName[tArmConfig.sName]	=
 		{
+			qShoulderLocalRotation	= nil,
 			qUpperLocalRotation		= nil,
 			qForeArmLocalRotation	= nil,
+			qHandLocalRotation		= nil,
 			vBendPlaneNormal		= nil,
 			vHandErrorModel			= nil,
 		}
@@ -188,8 +208,10 @@ function PlayerArmIK:GetArmRuntime(tArmConfig)
 
 	tArmRuntime	=
 	{
+		qShoulderLocalRotation	= nil,
 		qUpperLocalRotation		= nil,
 		qForeArmLocalRotation	= nil,
+		qHandLocalRotation		= nil,
 		vBendPlaneNormal		= nil,
 		vHandErrorModel			= nil,
 	}
@@ -204,8 +226,10 @@ end
 function PlayerArmIK:ResetArmRuntime(tArmConfig)
 	local tArmRuntime	= self:GetArmRuntime(tArmConfig)
 
+	tArmRuntime.qShoulderLocalRotation	= nil
 	tArmRuntime.qUpperLocalRotation		= nil
 	tArmRuntime.qForeArmLocalRotation	= nil
+	tArmRuntime.qHandLocalRotation		= nil
 	tArmRuntime.vBendPlaneNormal		= nil
 	tArmRuntime.vHandErrorModel		= nil
 end
@@ -223,14 +247,26 @@ function PlayerArmIK:ResolveWeaponGripTargetsWorld(oWeapon)
 	local oLeftGripTransform	= oWeapon.GetHandLeftTransform and oWeapon:GetHandLeftTransform() or nil
 	local vRightGripWorld		= oRightGripTransform and oRightGripTransform:GetWorldPosition() or nil
 	local vLeftGripWorld		= oLeftGripTransform and oLeftGripTransform:GetWorldPosition() or nil
+	local qRightGripWorld		= oRightGripTransform and oRightGripTransform:GetWorldRotation() or nil
+	local qLeftGripWorld		= oLeftGripTransform and oLeftGripTransform:GetWorldRotation() or nil
 
 	if not vRightGripWorld and not vLeftGripWorld then
 		return nil
 	end
 
 	return {
-		sRightGrip	= vRightGripWorld,
-		sLeftGrip	= vLeftGripWorld,
+		sRightGrip	=
+		{
+			oTransform		= oRightGripTransform,
+			vWorldPosition	= vRightGripWorld,
+			qWorldRotation	= qRightGripWorld,
+		},
+		sLeftGrip	=
+		{
+			oTransform		= oLeftGripTransform,
+			vWorldPosition	= vLeftGripWorld,
+			qWorldRotation	= qLeftGripWorld,
+		},
 	}
 end
 
@@ -243,15 +279,18 @@ function PlayerArmIK:WorldToModelPosition(oModelTransform, vWorldPosition)
 	return qModelWorldInverse * vWorldOffset
 end
 
-function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTargetModelPosition, nDeltaTime)
+function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTargetModelPosition, tGripTarget, nDeltaTime)
 	local tArmRuntime		= self:GetArmRuntime(tArmConfig)
 	local tInitialChainPose	= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
 	if not tInitialChainPose then return false end
 
-	local tArmPose		= tInitialChainPose[tArmConfig.sArmKey]
-	local tForeArmPose	= tInitialChainPose[tArmConfig.sForeArmKey]
-	local tHandPose		= tInitialChainPose[tArmConfig.sHandKey]
-	local tShoulderPose	= tInitialChainPose[tArmConfig.sShoulderKey]
+	local tShoulderAdjustedPose	= self:ApplyShoulderAssist(oSkinnedMeshRenderer, tArmConfig, tInitialChainPose, vTargetModelPosition, nDeltaTime, tArmRuntime)
+	local tWorkingChainPose		= tShoulderAdjustedPose or tInitialChainPose
+
+	local tArmPose		= tWorkingChainPose[tArmConfig.sArmKey]
+	local tForeArmPose	= tWorkingChainPose[tArmConfig.sForeArmKey]
+	local tHandPose		= tWorkingChainPose[tArmConfig.sHandKey]
+	local tShoulderPose	= tWorkingChainPose[tArmConfig.sShoulderKey]
 
 	if not tArmPose or not tForeArmPose or not tHandPose or not tShoulderPose then
 		return false
@@ -351,12 +390,109 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	tArmRuntime.qForeArmLocalRotation	= qForeArmLocalBlended
 
 	local tSolvedChainPose		= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
+	tSolvedChainPose			= self:ApplyHandRotationAlignment(oSkinnedMeshRenderer, tArmConfig, tSolvedChainPose, tGripTarget, nDeltaTime, tArmRuntime) or tSolvedChainPose
 	local tSolvedHandPose		= tSolvedChainPose and tSolvedChainPose[tArmConfig.sHandKey] or nil
 	local vSolvedHandPosition	= tSolvedHandPose and tSolvedHandPose.vModelPosition or tUpdatedHandPose.vModelPosition
 
 	self:SetArmRuntimeHandError(tArmRuntime, vTargetClamped - vSolvedHandPosition)
 
 	return true
+end
+
+function PlayerArmIK:ApplyShoulderAssist(oSkinnedMeshRenderer, tArmConfig, tChainPose, vTargetModelPosition, nDeltaTime, tArmRuntime)
+	if not self.bEnableShoulderAssist or not tChainPose then
+		return tChainPose
+	end
+
+	local tShoulderPose		= tChainPose[tArmConfig.sShoulderKey]
+	local tArmPose			= tChainPose[tArmConfig.sArmKey]
+
+	if not tShoulderPose or not tArmPose then
+		return tChainPose
+	end
+
+	local vShoulderToArm		= tArmPose.vModelPosition - tShoulderPose.vModelPosition
+	local vShoulderToTarget		= vTargetModelPosition - tShoulderPose.vModelPosition
+	local nShoulderToArmLength	= vShoulderToArm:Length()
+	local nShoulderToTargetLength	= vShoulderToTarget:Length()
+
+	if nShoulderToArmLength <= self.nIKEpsilon or nShoulderToTargetLength <= self.nIKEpsilon then
+		return tChainPose
+	end
+
+	local qShoulderDelta		= self:QuaternionFromTo(vShoulderToArm, vShoulderToTarget)
+	local qShoulderWorldTarget	= qShoulderDelta * tShoulderPose.qModelRotation
+	local qShoulderParentInverse	= self:InverseQuaternion(tShoulderPose.qParentRotation)
+	local qShoulderLocalTarget	= qShoulderParentInverse * qShoulderWorldTarget
+	local nProfileWeight		= self:ResolveWeaponShoulderAssistWeight(tArmConfig)
+	local nShoulderWeight		= self:Clamp(self.nShoulderAssistWeight * nProfileWeight, 0.0, 1.0)
+	local nShoulderAlpha		= self:Clamp(nDeltaTime * self.nShoulderAssistSmoothSpeed * nShoulderWeight, 0.0, 1.0)
+	local qShoulderLocalCurrent	= tArmRuntime.qShoulderLocalRotation or oSkinnedMeshRenderer:GetBoneLocalRotation(tShoulderPose.nBoneIndex)
+	local qShoulderLocalBlended	= qShoulderLocalCurrent and self:BlendQuaternion(qShoulderLocalCurrent, qShoulderLocalTarget, nShoulderAlpha) or qShoulderLocalTarget
+
+	oSkinnedMeshRenderer:SetBoneLocalRotation(tShoulderPose.nBoneIndex, qShoulderLocalBlended)
+	tArmRuntime.qShoulderLocalRotation	= qShoulderLocalBlended
+
+	return self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
+end
+
+function PlayerArmIK:ApplyHandRotationAlignment(oSkinnedMeshRenderer, tArmConfig, tChainPose, tGripTarget, nDeltaTime, tArmRuntime)
+	if not self.bEnableHandRotationAlignment or not tChainPose or not tGripTarget then
+		return tChainPose
+	end
+
+	local qGripWorldRotation	= tGripTarget.qWorldRotation
+	local oModelTransform		= self._private.oModelTransform
+	local tForeArmPose		= tChainPose[tArmConfig.sForeArmKey]
+	local tHandPose			= tChainPose[tArmConfig.sHandKey]
+
+	if not qGripWorldRotation or not oModelTransform or not tForeArmPose or not tHandPose then
+		return tChainPose
+	end
+
+	local qModelWorldInverse	= self:InverseQuaternion(oModelTransform:GetWorldRotation())
+	local qGripModelRotation	= qModelWorldInverse * qGripWorldRotation
+	local qGripOffsetRotation	= self:ResolveWeaponGripOffsetRotation(tArmConfig)
+	local qHandModelTarget		= qGripModelRotation * qGripOffsetRotation
+	local qForeArmWorldInverse	= self:InverseQuaternion(tForeArmPose.qModelRotation)
+	local qHandLocalTarget		= qForeArmWorldInverse * qHandModelTarget
+	local nProfileHandWeight	= self:ResolveWeaponHandRotationWeight(tArmConfig)
+	local nHandWeight		= self:Clamp(self.nHandRotationWeight * nProfileHandWeight, 0.0, 1.0)
+	local nHandAlpha		= self:Clamp(nDeltaTime * self.nHandRotationSmoothSpeed * nHandWeight, 0.0, 1.0)
+	local qHandLocalCurrent		= tArmRuntime.qHandLocalRotation or oSkinnedMeshRenderer:GetBoneLocalRotation(tHandPose.nBoneIndex)
+	local qHandLocalBlended		= qHandLocalCurrent and self:BlendQuaternion(qHandLocalCurrent, qHandLocalTarget, nHandAlpha) or qHandLocalTarget
+
+	oSkinnedMeshRenderer:SetBoneLocalRotation(tHandPose.nBoneIndex, qHandLocalBlended)
+	tArmRuntime.qHandLocalRotation	= qHandLocalBlended
+
+	return self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
+end
+
+function PlayerArmIK:ResolveWeaponGripProfile()
+	local oWeapon	= self._private.oCurrentWeapon
+
+	return oWeapon and oWeapon.GetGripProfile and oWeapon:GetGripProfile() or nil
+end
+
+function PlayerArmIK:ResolveWeaponShoulderAssistWeight(tArmConfig)
+	local oGripProfile	= self:ResolveWeaponGripProfile()
+	local nWeight		= oGripProfile and oGripProfile.GetShoulderAssistWeight and oGripProfile:GetShoulderAssistWeight(tArmConfig.sName) or 1.0
+
+	return nWeight or 1.0
+end
+
+function PlayerArmIK:ResolveWeaponHandRotationWeight(tArmConfig)
+	local oGripProfile	= self:ResolveWeaponGripProfile()
+	local nWeight		= oGripProfile and oGripProfile.GetHandRotationWeight and oGripProfile:GetHandRotationWeight(tArmConfig.sName) or 1.0
+
+	return nWeight or 1.0
+end
+
+function PlayerArmIK:ResolveWeaponGripOffsetRotation(tArmConfig)
+	local oGripProfile	= self:ResolveWeaponGripProfile()
+	local qProfileOffset	= oGripProfile and oGripProfile.GetGripOffsetRotation and oGripProfile:GetGripOffsetRotation(tArmConfig.sName) or nil
+
+	return qProfileOffset or Quaternion.new(Vector3.new(tArmConfig.nDefaultGripOffsetX or 0.0, tArmConfig.nDefaultGripOffsetY or 0.0, tArmConfig.nDefaultGripOffsetZ or 0.0))
 end
 
 function PlayerArmIK:SetArmRuntimeHandError(tArmRuntime, vHandErrorModel)
@@ -367,46 +503,67 @@ function PlayerArmIK:SetArmRuntimeHandError(tArmRuntime, vHandErrorModel)
 	tArmRuntime.vHandErrorModel	= vHandErrorModel
 end
 
-function PlayerArmIK:ResolveWeaponYawAssistDeltaDegrees(oWeapon, oModelTransform, tGripTargetsWorld)
-	if not self.bEnableWeaponYawAssist or not oWeapon or not oModelTransform or not tGripTargetsWorld then
+function PlayerArmIK:ResolveWeaponYawAssistDeltaDegrees(oWeapon, oSkinnedMeshRenderer, oModelTransform, tGripTargetsWorld)
+	if not self.bEnableWeaponYawAssist or not oWeapon or not oSkinnedMeshRenderer or not oModelTransform or not tGripTargetsWorld then
 		return nil
 	end
 
-	local tLeftArmRuntime	= self._private.tArmRuntimeByName.LeftArm
-	local vLeftErrorModel	= tLeftArmRuntime and tLeftArmRuntime.vHandErrorModel or nil
-	local vRightGripWorld	= tGripTargetsWorld.sRightGrip
-	local vLeftGripWorld	= tGripTargetsWorld.sLeftGrip
+	local tRightGripTarget	= tGripTargetsWorld.sRightGrip
+	local tLeftGripTarget	= tGripTargetsWorld.sLeftGrip
+	local vRightGripWorld	= tRightGripTarget and tRightGripTarget.vWorldPosition or nil
+	local vLeftGripWorld	= tLeftGripTarget and tLeftGripTarget.vWorldPosition or nil
 
-	if not vLeftErrorModel or not vRightGripWorld or not vLeftGripWorld then
+	if not vRightGripWorld or not vLeftGripWorld then
 		return nil
 	end
 
-	local oWeaponRootTransform	= oWeapon.GetRootTransform and oWeapon:GetRootTransform() or nil
-	local qWeaponWorldRotation	= oWeaponRootTransform and oWeaponRootTransform:GetWorldRotation() or nil
-	local vYawAxisWorld		= qWeaponWorldRotation and (qWeaponWorldRotation * Vector3.new(0, 1, 0)) or Vector3.new(0, 1, 0)
-	local vGripRadiusWorld		= vLeftGripWorld - vRightGripWorld
-	local vGripTangentWorld		= vYawAxisWorld:Cross(vGripRadiusWorld)
-	local nGripTangentLengthSq	= vGripTangentWorld:Dot(vGripTangentWorld)
+	local tRightChainPose	= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfigs[1].tChainKeys)
+	local tLeftChainPose	= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfigs[2].tChainKeys)
+	local tRightHandPose	= tRightChainPose and tRightChainPose[tArmConfigs[1].sHandKey] or nil
+	local tLeftHandPose	= tLeftChainPose and tLeftChainPose[tArmConfigs[2].sHandKey] or nil
 
-	if nGripTangentLengthSq <= self.nIKEpsilon then
+	if not tRightHandPose or not tLeftHandPose then
 		return nil
 	end
 
-	local qModelWorldRotation	= oModelTransform:GetWorldRotation()
-	local vLeftErrorWorld		= qModelWorldRotation * vLeftErrorModel
-	local nLeftErrorLength		= vLeftErrorWorld:Length()
+	local vRightGripModel	= self:WorldToModelPosition(oModelTransform, vRightGripWorld)
+	local vLeftGripModel	= self:WorldToModelPosition(oModelTransform, vLeftGripWorld)
+	local vHandsAxisModel	= tLeftHandPose.vModelPosition - tRightHandPose.vModelPosition
+	local vGripsAxisModel	= vLeftGripModel - vRightGripModel
+	local vHandsAxisFlat	= Vector3.new(vHandsAxisModel.x, 0.0, vHandsAxisModel.z)
+	local vGripsAxisFlat	= Vector3.new(vGripsAxisModel.x, 0.0, vGripsAxisModel.z)
+	local nHandsAxisFlatLengthSq	= vHandsAxisFlat:Dot(vHandsAxisFlat)
+	local nGripsAxisFlatLengthSq	= vGripsAxisFlat:Dot(vGripsAxisFlat)
 
-	if nLeftErrorLength <= self.nWeaponYawAssistDeadZone then
+	if nHandsAxisFlatLengthSq <= self.nIKEpsilon or nGripsAxisFlatLengthSq <= self.nIKEpsilon then
+		return nil
+	end
+
+	local vHandsAxisFlatNormal	= vHandsAxisFlat / math.sqrt(nHandsAxisFlatLengthSq)
+	local vGripsAxisFlatNormal	= vGripsAxisFlat / math.sqrt(nGripsAxisFlatLengthSq)
+	local nDot			= self:Clamp(vGripsAxisFlatNormal:Dot(vHandsAxisFlatNormal), -1.0, 1.0)
+	local nCrossY		= (vGripsAxisFlatNormal.z * vHandsAxisFlatNormal.x) - (vGripsAxisFlatNormal.x * vHandsAxisFlatNormal.z)
+	local fAtan2		= math.atan2
+	local nSignedDeltaRadians	= 0.0
+
+	if fAtan2 then
+		nSignedDeltaRadians	= fAtan2(nCrossY, nDot)
+	else
+		local nUnsignedDeltaRadians	= math.acos(nDot)
+		nSignedDeltaRadians	= nCrossY < 0.0 and -nUnsignedDeltaRadians or nUnsignedDeltaRadians
+	end
+
+	local nAssistGain		= self.nWeaponYawAssistGain or 1.0
+	local nSignedDeltaDegrees	= math.deg(nSignedDeltaRadians) * self.nWeaponYawAssistSign * nAssistGain
+
+	if math.abs(nSignedDeltaDegrees) <= self.nWeaponYawAssistAngleDeadZone then
 		return 0.0
 	end
-
-	local nSignedDeltaRadians	= ((vLeftErrorWorld * -1.0):Dot(vGripTangentWorld)) / nGripTangentLengthSq
-	local nSignedDeltaDegrees	= math.deg(nSignedDeltaRadians) * self.nWeaponYawAssistSign
 
 	return nSignedDeltaDegrees
 end
 
-function PlayerArmIK:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime, tGripTargetsWorld)
+function PlayerArmIK:UpdateWeaponYawAssist(oWeapon, oSkinnedMeshRenderer, oModelTransform, nDeltaTime, tGripTargetsWorld)
 	local nCurrentYawOffset	= self._private.nWeaponYawAssistCurrent or 0.0
 	local oLastWeapon		= self._private.oWeaponYawAssistLastWeapon
 
@@ -414,7 +571,7 @@ function PlayerArmIK:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime,
 		nCurrentYawOffset	= 0.0
 	end
 
-	local nYawDeltaDegrees	= self:ResolveWeaponYawAssistDeltaDegrees(oWeapon, oModelTransform, tGripTargetsWorld)
+	local nYawDeltaDegrees	= self:ResolveWeaponYawAssistDeltaDegrees(oWeapon, oSkinnedMeshRenderer, oModelTransform, tGripTargetsWorld)
 	local nMaxYawOffset		= self.nWeaponYawAssistMaxOffset
 	local nYawStepMax		= self.nWeaponYawAssistSpeed * nDeltaTime
 
@@ -436,6 +593,10 @@ function PlayerArmIK:UpdateWeaponYawAssist(oWeapon, oModelTransform, nDeltaTime,
 			oWeapon:SetDynamicYawOffsetY(nCurrentYawOffset)
 		elseif oWeapon.ResetDynamicYawOffsetY then
 			oWeapon:ResetDynamicYawOffsetY()
+		end
+
+		if oWeapon.ApplyEquipOffset then
+			oWeapon:ApplyEquipOffset()
 		end
 	end
 end

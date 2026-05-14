@@ -23,6 +23,7 @@ local Weapon	=
 		oHandLeftActor		= nil,
 		oHandRightTransform	= nil,
 		oHandLeftTransform	= nil,
+		oGripProfile		= nil,
 		bIsEquipped			= false,
 		bDidLogMissingHandR	= false,
 		bDidLogMissingHandL	= false,
@@ -33,6 +34,7 @@ local Weapon	=
 function Weapon:OnAwake()
 	self						= setmetatable(self, self:ResolveClassBehaviour())
 	self._private.oRootTransform	= self.owner:GetTransform()
+	self._private.oGripProfile		= self.owner:GetBehaviour("WeaponGripProfile")
 
 	self:RefreshGripActors()
 
@@ -129,11 +131,15 @@ function Weapon:ApplyEquipOffset()
 
 	if not oRootTransform then return end
 
+	local oGripProfile		= self._private.oGripProfile
 	local nAutoYaw			= self:ResolveAutoGripYawAngle()
 	local nDynamicYawOffsetY	= self._private.nDynamicYawOffsetY or 0.0
 	local nEquipYaw			= self.nEquipRotationY + nAutoYaw + nDynamicYawOffsetY
-	local qEquipRotation	= Quaternion.new(Vector3.new(self.nEquipRotationX, nEquipYaw, self.nEquipRotationZ))
-	local vEquipOffset		= Vector3.new(self.nEquipOffsetX, self.nEquipOffsetY, self.nEquipOffsetZ)
+	local qEquipBaseRotation	= Quaternion.new(Vector3.new(self.nEquipRotationX, nEquipYaw, self.nEquipRotationZ))
+	local qMountRotation		= oGripProfile and oGripProfile.GetMountRotation and oGripProfile:GetMountRotation() or Quaternion.new(Vector3.new(0, 0, 0))
+	local qEquipRotation		= qEquipBaseRotation * qMountRotation
+	local vMountOffset		= oGripProfile and oGripProfile.GetMountOffset and oGripProfile:GetMountOffset() or Vector3.new(0, 0, 0)
+	local vEquipOffset		= Vector3.new(self.nEquipOffsetX, self.nEquipOffsetY, self.nEquipOffsetZ) + vMountOffset
 
 	if self.bAnchorRightHandToSocket then
 		local oHandRightTransform	= self._private.oHandRightTransform
@@ -229,6 +235,10 @@ end
 
 function Weapon:GetSocketActor()
 	return self._private.oSocketActor
+end
+
+function Weapon:GetGripProfile()
+	return self._private.oGripProfile
 end
 
 function Weapon:HasValidGripPoints()
