@@ -20,6 +20,16 @@ local WeaponHolder	=
 	nUpperBodySocketSmoothSpeed	= 14.0,
 	nUpperBodySocketMaxYawAngle	= 0.0,
 	nUpperBodySocketMaxPitchAngle	= 0.0,
+	bEnableViewPitchSocketSync	= true,
+	nViewPitchSocketWeight		= 0.65,
+	nViewPitchSocketMaxAngle	= 38.0,
+	bEnableSocketPitchPositionCompensation	= true,
+	nSocketPitchPositionWeight	= 1.0,
+	nSocketPitchPositionOffsetPerDegreeX	= 0.0,
+	nSocketPitchPositionOffsetPerDegreeY	= -0.0065,
+	nSocketPitchPositionOffsetPerDegreeZ	= -0.0055,
+	nSocketPitchPositionDownMultiplier	= 1.75,
+	nSocketPitchPositionUpMultiplier	= 1.0,
 	bEquipOnStart				= true,
 	bEnableWeaponLogs			= true,
 
@@ -31,6 +41,8 @@ local WeaponHolder	=
 		oEquippedWeaponActor		= nil,
 		oEquippedWeapon				= nil,
 		oHeadLook					= nil,
+		oView						= nil,
+		vSocketBaseLocalPosition	= nil,
 		qSocketBaseLocalRotation	= nil,
 		nSocketUpperBodyPitchAngle	= 0.0,
 		nSocketUpperBodyYawAngle	= 0.0,
@@ -44,9 +56,11 @@ function WeaponHolder:OnAwake()
 	self._private.oSocketActor				= self:ResolveActor(self.sWeaponSocketActorName)
 	self._private.oSocketTransform			= self._private.oSocketActor and self._private.oSocketActor:GetTransform() or nil
 	self._private.oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
+	self._private.oView						= self.owner:GetBehaviour("View") or self:FindBehaviourInParents(self.owner, "View")
 
 	self:EnsureSocketParent()
 	self:ApplySocketLocalPose()
+	self:CacheSocketBaseLocalPosition()
 	self:CacheSocketBaseLocalRotation()
 	self:ValidateRequiredActors()
 end
@@ -121,15 +135,33 @@ function WeaponHolder:CacheSocketBaseLocalRotation()
 	return qSocketBaseLocalRotation
 end
 
-function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
+function WeaponHolder:CacheSocketBaseLocalPosition()
 	local oSocketTransform	= self._private.oSocketTransform
+
+	if not oSocketTransform then
+		self._private.vSocketBaseLocalPosition	= nil
+		return nil
+	end
+
+	local vSocketBaseLocalPosition	= oSocketTransform:GetLocalPosition()
+
+	self._private.vSocketBaseLocalPosition	= vSocketBaseLocalPosition
+
+	return vSocketBaseLocalPosition
+end
+
+function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
+	local oSocketTransform				= self._private.oSocketTransform
+	local bEnableUpperBodySocketSync	= self.bEnableUpperBodySocketSync
+	local bEnableViewPitchSocketSync	= self.bEnableViewPitchSocketSync
 
 	if not oSocketTransform then
 		return false
 	end
 
-	if not self.bEnableUpperBodySocketSync then
+	if not bEnableUpperBodySocketSync and not bEnableViewPitchSocketSync then
 		local qSocketBaseLocalRotation	= self._private.qSocketBaseLocalRotation or self:CacheSocketBaseLocalRotation()
+		local vSocketBaseLocalPosition	= self._private.vSocketBaseLocalPosition or self:CacheSocketBaseLocalPosition()
 
 		self._private.nSocketUpperBodyPitchAngle	= 0.0
 		self._private.nSocketUpperBodyYawAngle		= 0.0
@@ -138,34 +170,52 @@ function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
 			oSocketTransform:SetLocalRotation(qSocketBaseLocalRotation)
 		end
 
+		if vSocketBaseLocalPosition then
+			oSocketTransform:SetLocalPosition(vSocketBaseLocalPosition)
+		end
+
 		return true
 	end
 
-	local oHeadLook	= self._private.oHeadLook
+	local nSocketTargetPitchAngle		= 0.0
+	local nSocketTargetYawAngle			= 0.0
+	local nProfileSocketPitchWeight		= self:ResolveSocketUpperBodyPitchProfileWeight()
+	local nProfileSocketYawWeight		= self:ResolveSocketUpperBodyYawProfileWeight()
+	local nMaxPitchAngle				= self.nUpperBodySocketMaxPitchAngle or 0.0
+	local nMaxYawAngle					= self.nUpperBodySocketMaxYawAngle or 0.0
+	local nViewPitchAngle				= 0.0
 
-	if not oHeadLook then
-		oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
-		self._private.oHeadLook		= oHeadLook
+	if bEnableUpperBodySocketSync then
+		local oHeadLook					= self._private.oHeadLook
+
+		if not oHeadLook then
+			oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
+			self._private.oHeadLook		= oHeadLook
+		end
+
+		local bCanSyncSocketWithHeadLook	= oHeadLook and oHeadLook.GetUpperBodyAimOffsetAngles
+
+		if bCanSyncSocketWithHeadLook then
+			local nUpperBodyPitchAngle, nUpperBodyYawAngle	= oHeadLook:GetUpperBodyAimOffsetAngles()
+			local bFollowUpperBodyYawYOnly	= self.bFollowUpperBodyYawYOnly
+			local nSocketPitchWeight	= (self.nUpperBodySocketPitchWeight or 0.0) * nProfileSocketPitchWeight
+			local nSocketYawWeight		= (self.nUpperBodySocketYawWeight or 0.0) * nProfileSocketYawWeight
+			local nWeightedPitchAngle	= bFollowUpperBodyYawYOnly and 0.0 or (nUpperBodyPitchAngle * nSocketPitchWeight)
+			local nWeightedYawAngle		= nUpperBodyYawAngle * nSocketYawWeight
+
+			nSocketTargetPitchAngle	= nMaxPitchAngle > 0.0 and self:Clamp(nWeightedPitchAngle, -nMaxPitchAngle, nMaxPitchAngle) or nWeightedPitchAngle
+			nSocketTargetYawAngle	= nMaxYawAngle > 0.0 and self:Clamp(nWeightedYawAngle, -nMaxYawAngle, nMaxYawAngle) or nWeightedYawAngle
+		end
 	end
 
-	local nSocketTargetPitchAngle	= 0.0
-	local nSocketTargetYawAngle		= 0.0
-	local bCanSyncSocketWithHeadLook	= self.bEnableUpperBodySocketSync and oHeadLook and oHeadLook.GetUpperBodyAimOffsetAngles
+	if bEnableViewPitchSocketSync then
+		nViewPitchAngle				= self:ResolveViewPitchAngle()
+		local nViewPitchSocketWeight	= (self.nViewPitchSocketWeight or 0.0) * nProfileSocketPitchWeight
+		local nViewPitchSocketMaxAngle	= self.nViewPitchSocketMaxAngle or 0.0
+		local nWeightedViewPitchAngle	= nViewPitchAngle * nViewPitchSocketWeight
+		local nClampedViewPitchAngle	= nViewPitchSocketMaxAngle > 0.0 and self:Clamp(nWeightedViewPitchAngle, -nViewPitchSocketMaxAngle, nViewPitchSocketMaxAngle) or nWeightedViewPitchAngle
 
-	if bCanSyncSocketWithHeadLook then
-		local nUpperBodyPitchAngle, nUpperBodyYawAngle	= oHeadLook:GetUpperBodyAimOffsetAngles()
-		local bFollowUpperBodyYawYOnly	= self.bFollowUpperBodyYawYOnly
-		local nProfileSocketPitchWeight	= self:ResolveSocketUpperBodyPitchProfileWeight()
-		local nProfileSocketYawWeight	= self:ResolveSocketUpperBodyYawProfileWeight()
-		local nSocketPitchWeight	= (self.nUpperBodySocketPitchWeight or 0.0) * nProfileSocketPitchWeight
-		local nSocketYawWeight		= (self.nUpperBodySocketYawWeight or 0.0) * nProfileSocketYawWeight
-		local nWeightedPitchAngle	= bFollowUpperBodyYawYOnly and 0.0 or (nUpperBodyPitchAngle * nSocketPitchWeight)
-		local nWeightedYawAngle		= nUpperBodyYawAngle * nSocketYawWeight
-		local nMaxPitchAngle		= self.nUpperBodySocketMaxPitchAngle or 0.0
-		local nMaxYawAngle			= self.nUpperBodySocketMaxYawAngle or 0.0
-
-		nSocketTargetPitchAngle	= nMaxPitchAngle > 0.0 and self:Clamp(nWeightedPitchAngle, -nMaxPitchAngle, nMaxPitchAngle) or nWeightedPitchAngle
-		nSocketTargetYawAngle	= nMaxYawAngle > 0.0 and self:Clamp(nWeightedYawAngle, -nMaxYawAngle, nMaxYawAngle) or nWeightedYawAngle
+		nSocketTargetPitchAngle	= nSocketTargetPitchAngle + nClampedViewPitchAngle
 	end
 
 	local bUseDirectSocketRotation	= self.bUseTorsoAimDirectSocketRotation
@@ -175,6 +225,8 @@ function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
 	local nUpdatedSocketPitchAngle	= self:LerpAngle(nCurrentSocketPitchAngle, nSocketTargetPitchAngle, nSocketBlendAlpha)
 	local nUpdatedSocketYawAngle	= self:LerpAngle(nCurrentSocketYawAngle, nSocketTargetYawAngle, nSocketBlendAlpha)
 	local qSocketBaseLocalRotation	= self._private.qSocketBaseLocalRotation or self:CacheSocketBaseLocalRotation()
+	local vSocketBaseLocalPosition	= self._private.vSocketBaseLocalPosition or self:CacheSocketBaseLocalPosition()
+	local vSocketTargetLocalPosition	= vSocketBaseLocalPosition
 
 	self._private.nSocketUpperBodyPitchAngle	= nUpdatedSocketPitchAngle
 	self._private.nSocketUpperBodyYawAngle		= nUpdatedSocketYawAngle
@@ -187,6 +239,25 @@ function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
 	local qSocketTargetLocalRotation		= qSocketBaseLocalRotation * qUpperBodySocketOffsetRotation
 
 	oSocketTransform:SetLocalRotation(qSocketTargetLocalRotation)
+
+	if vSocketBaseLocalPosition and self.bEnableSocketPitchPositionCompensation then
+		local nProfileSocketPitchPositionWeight	= self:ResolveSocketPitchPositionProfileWeight()
+		local nSocketPitchPositionWeight		= (self.nSocketPitchPositionWeight or 0.0) * nProfileSocketPitchPositionWeight
+		local nSocketPitchSourceAngle			= bEnableViewPitchSocketSync and nViewPitchAngle or nUpdatedSocketPitchAngle
+		local nSocketPitchDirectionMultiplier	= nSocketPitchSourceAngle >= 0.0 and (self.nSocketPitchPositionDownMultiplier or 1.0) or (self.nSocketPitchPositionUpMultiplier or 1.0)
+		local nSocketPitchOffsetScale			= nSocketPitchSourceAngle * nSocketPitchPositionWeight * nSocketPitchDirectionMultiplier
+		local vSocketPitchPositionOffset		= Vector3.new(
+			(self.nSocketPitchPositionOffsetPerDegreeX or 0.0) * nSocketPitchOffsetScale,
+			(self.nSocketPitchPositionOffsetPerDegreeY or 0.0) * nSocketPitchOffsetScale,
+			(self.nSocketPitchPositionOffsetPerDegreeZ or 0.0) * nSocketPitchOffsetScale
+		)
+
+		vSocketTargetLocalPosition	= vSocketBaseLocalPosition + vSocketPitchPositionOffset
+	end
+
+	if vSocketTargetLocalPosition then
+		oSocketTransform:SetLocalPosition(vSocketTargetLocalPosition)
+	end
 
 	return true
 end
@@ -314,6 +385,27 @@ function WeaponHolder:ResolveSocketUpperBodyPitchProfileWeight()
 	local nWeight		= oGripProfile and oGripProfile.GetSocketUpperBodyPitchWeight and oGripProfile:GetSocketUpperBodyPitchWeight() or 1.0
 
 	return nWeight or 1.0
+end
+
+function WeaponHolder:ResolveSocketPitchPositionProfileWeight()
+	local oWeapon		= self._private.oEquippedWeapon
+	local oGripProfile	= oWeapon and oWeapon.GetGripProfile and oWeapon:GetGripProfile() or nil
+	local nWeight		= oGripProfile and oGripProfile.GetSocketPitchPositionWeight and oGripProfile:GetSocketPitchPositionWeight() or 1.0
+
+	return nWeight or 1.0
+end
+
+function WeaponHolder:ResolveViewPitchAngle()
+	local oView	= self._private.oView
+
+	if not oView then
+		oView					= self.owner:GetBehaviour("View") or self:FindBehaviourInParents(self.owner, "View")
+		self._private.oView		= oView
+	end
+
+	local nViewPitchAngle	= oView and oView.GetPitchAngle and oView:GetPitchAngle() or 0.0
+
+	return nViewPitchAngle or 0.0
 end
 
 function WeaponHolder:GetWeaponSocketActor()
