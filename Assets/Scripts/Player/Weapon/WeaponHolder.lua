@@ -30,6 +30,18 @@ local WeaponHolder	=
 	nSocketPitchPositionOffsetPerDegreeZ	= -0.0055,
 	nSocketPitchPositionDownMultiplier	= 1.75,
 	nSocketPitchPositionUpMultiplier	= 1.0,
+	sPlayerCameraActorName		= "Player Camera",
+	bEnableAimDownSights		= true,
+	nAimMouseButton			= MouseButton.BUTTON_RIGHT,
+	nAimEnterSpeed			= 16.0,
+	nAimExitSpeed			= 12.0,
+	nAimSocketBlendWeight		= 1.0,
+	nAimSocketCameraOffsetX		= -0.2,
+	nAimSocketCameraOffsetY		= -0.8,
+	nAimSocketCameraOffsetZ		= 1,
+	nAimSocketRotationPitch		= -0.8,
+	nAimSocketRotationYaw		= 0.0,
+	nAimSocketRotationRoll		= 0.0,
 	bEquipOnStart				= true,
 	bEnableWeaponLogs			= true,
 
@@ -42,10 +54,15 @@ local WeaponHolder	=
 		oEquippedWeapon				= nil,
 		oHeadLook					= nil,
 		oView						= nil,
+		oCameraTransform			= nil,
 		vSocketBaseLocalPosition	= nil,
 		qSocketBaseLocalRotation	= nil,
+		vSocketHipLocalPosition		= nil,
+		qSocketHipLocalRotation		= nil,
 		nSocketUpperBodyPitchAngle	= 0.0,
 		nSocketUpperBodyYawAngle	= 0.0,
+		nAimAlpha				= 0.0,
+		bIsAimingDownSights		= false,
 		bDidLogMissingSocket		= false,
 	}
 }
@@ -57,6 +74,7 @@ function WeaponHolder:OnAwake()
 	self._private.oSocketTransform			= self._private.oSocketActor and self._private.oSocketActor:GetTransform() or nil
 	self._private.oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
 	self._private.oView						= self.owner:GetBehaviour("View") or self:FindBehaviourInParents(self.owner, "View")
+	self._private.oCameraTransform			= self:ResolveCameraTransform()
 
 	self:EnsureSocketParent()
 	self:ApplySocketLocalPose()
@@ -73,6 +91,7 @@ end
 
 function WeaponHolder:OnLateUpdate(nDeltaTime)
 	self:UpdateSocketUpperBodySync(nDeltaTime)
+	self:UpdateAimDownSights(nDeltaTime)
 	self:UpdateEquippedWeaponPose(nDeltaTime)
 end
 
@@ -168,10 +187,12 @@ function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
 
 		if qSocketBaseLocalRotation then
 			oSocketTransform:SetLocalRotation(qSocketBaseLocalRotation)
+			self._private.qSocketHipLocalRotation	= qSocketBaseLocalRotation
 		end
 
 		if vSocketBaseLocalPosition then
 			oSocketTransform:SetLocalPosition(vSocketBaseLocalPosition)
+			self._private.vSocketHipLocalPosition	= vSocketBaseLocalPosition
 		end
 
 		return true
@@ -259,6 +280,9 @@ function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
 		oSocketTransform:SetLocalPosition(vSocketTargetLocalPosition)
 	end
 
+	self._private.qSocketHipLocalRotation	= qSocketTargetLocalRotation
+	self._private.vSocketHipLocalPosition	= vSocketTargetLocalPosition or vSocketBaseLocalPosition
+
 	return true
 end
 
@@ -336,6 +360,7 @@ function WeaponHolder:EquipWeaponActor(oWeaponActor)
 
 	self._private.oEquippedWeaponActor	= oWeaponActor
 	self._private.oEquippedWeapon		= oWeapon
+	self:SetAimDownSightsAlpha(self._private.nAimAlpha or 0.0)
 
 	if self.bEnableWeaponLogs then
 		Debug.Log("WeaponHolder: equipped '" .. oWeaponActor:GetName() .. "'")
@@ -346,6 +371,8 @@ end
 
 function WeaponHolder:UnequipCurrentWeapon()
 	local oWeapon	= self._private.oEquippedWeapon
+
+	self:SetAimDownSightsAlpha(0.0)
 
 	if oWeapon and oWeapon.Unequip then
 		oWeapon:Unequip()
@@ -361,6 +388,105 @@ function WeaponHolder:UpdateEquippedWeaponPose(nDeltaTime)
 	if oWeapon and oWeapon.ApplyEquipOffset then
 		oWeapon:ApplyEquipOffset()
 	end
+end
+
+function WeaponHolder:UpdateAimDownSights(nDeltaTime)
+	local bEnableAimDownSights	= self.bEnableAimDownSights
+	local nAimMouseButton		= self.nAimMouseButton
+	local bWantsAimDownSights	= bEnableAimDownSights and Inputs.GetMouseButton(nAimMouseButton)
+	local nAimTargetAlpha		= bWantsAimDownSights and 1.0 or 0.0
+	local nAimAlphaCurrent		= self._private.nAimAlpha or 0.0
+	local nAimSpeed			= bWantsAimDownSights and (self.nAimEnterSpeed or 0.0) or (self.nAimExitSpeed or 0.0)
+	local nAimBlendAlpha		= self:Clamp((nDeltaTime or 0.0) * nAimSpeed, 0.0, 1.0)
+	local nAimAlphaUpdated		= nAimAlphaCurrent + ((nAimTargetAlpha - nAimAlphaCurrent) * nAimBlendAlpha)
+	local nAimAlpha			= self:Clamp(nAimAlphaUpdated, 0.0, 1.0)
+
+	self:SetAimDownSightsAlpha(nAimAlpha)
+	self:ApplyAimDownSightsSocketPose()
+end
+
+function WeaponHolder:SetAimDownSightsAlpha(nAimAlpha)
+	local nClampedAimAlpha	= self:Clamp(nAimAlpha or 0.0, 0.0, 1.0)
+	local oWeapon		= self._private.oEquippedWeapon
+
+	self._private.nAimAlpha			= nClampedAimAlpha
+	self._private.bIsAimingDownSights	= nClampedAimAlpha > 0.0001
+
+	if oWeapon then
+		if oWeapon.SetAimAlpha then
+			oWeapon:SetAimAlpha(nClampedAimAlpha)
+		elseif oWeapon.ResetAimAlpha then
+			oWeapon:ResetAimAlpha()
+		end
+	end
+end
+
+function WeaponHolder:ApplyAimDownSightsSocketPose()
+	local oSocketTransform	= self._private.oSocketTransform
+	local nAimAlphaRaw	= self._private.nAimAlpha or 0.0
+	local nAimBlendWeight	= self.nAimSocketBlendWeight or 1.0
+	local nAimAlpha		= self:Clamp(nAimAlphaRaw * nAimBlendWeight, 0.0, 1.0)
+
+	if not oSocketTransform or nAimAlpha <= 0.0001 then
+		return false
+	end
+
+	local vSocketHipLocalPosition	= self._private.vSocketHipLocalPosition or oSocketTransform:GetLocalPosition()
+	local qSocketHipLocalRotation	= self._private.qSocketHipLocalRotation or oSocketTransform:GetLocalRotation()
+	local vSocketAimLocalPosition, qSocketAimLocalRotation	= self:ResolveAimDownSightsSocketLocalPose()
+
+	if not vSocketHipLocalPosition or not qSocketHipLocalRotation or not vSocketAimLocalPosition or not qSocketAimLocalRotation then
+		return false
+	end
+
+	local vSocketLocalPosition	= self:LerpVector3(vSocketHipLocalPosition, vSocketAimLocalPosition, nAimAlpha)
+	local qSocketLocalRotation	= self:BlendQuaternion(qSocketHipLocalRotation, qSocketAimLocalRotation, nAimAlpha)
+
+	oSocketTransform:SetLocalPosition(vSocketLocalPosition)
+	oSocketTransform:SetLocalRotation(qSocketLocalRotation)
+
+	return true
+end
+
+function WeaponHolder:ResolveAimDownSightsSocketLocalPose()
+	local oSocketActor		= self._private.oSocketActor
+	local oCameraTransform	= self._private.oCameraTransform or self:ResolveCameraTransform()
+
+	if not oSocketActor or not oCameraTransform then
+		return nil, nil
+	end
+
+	local oSocketParentActor	= oSocketActor:GetParent()
+	local oSocketParentTransform	= oSocketParentActor and oSocketParentActor:GetTransform() or nil
+
+	if not oSocketParentTransform then
+		return nil, nil
+	end
+
+	local vParentWorldPosition	= oSocketParentTransform:GetWorldPosition()
+	local qParentWorldRotation	= oSocketParentTransform:GetWorldRotation()
+	local qParentWorldInverse	= self:InverseQuaternion(qParentWorldRotation)
+	local vCameraWorldPosition	= oCameraTransform:GetWorldPosition()
+	local qCameraWorldRotation	= oCameraTransform:GetWorldRotation()
+	local vAimCameraOffset		= Vector3.new(self.nAimSocketCameraOffsetX or 0.0, self.nAimSocketCameraOffsetY or 0.0, self.nAimSocketCameraOffsetZ or 0.0)
+	local qAimCameraRotationOffset	= Quaternion.new(Vector3.new(self.nAimSocketRotationPitch or 0.0, self.nAimSocketRotationYaw or 0.0, self.nAimSocketRotationRoll or 0.0))
+	local vAimWorldPosition		= vCameraWorldPosition + (qCameraWorldRotation * vAimCameraOffset)
+	local qAimWorldRotation		= qCameraWorldRotation * qAimCameraRotationOffset
+	local vAimParentSpaceOffset	= vAimWorldPosition - vParentWorldPosition
+	local vAimLocalPosition		= qParentWorldInverse * vAimParentSpaceOffset
+	local qAimLocalRotation		= qParentWorldInverse * qAimWorldRotation
+
+	self._private.oCameraTransform	= oCameraTransform
+
+	return vAimLocalPosition, qAimLocalRotation
+end
+
+function WeaponHolder:GetAimDownSightsAlpha()
+	return self._private.nAimAlpha or 0.0
+end
+
+function WeaponHolder:IsAimingDownSights()
+	return self._private.bIsAimingDownSights or false
 end
 
 function WeaponHolder:GetEquippedWeaponActor()
@@ -406,6 +532,68 @@ function WeaponHolder:ResolveViewPitchAngle()
 	local nViewPitchAngle	= oView and oView.GetPitchAngle and oView:GetPitchAngle() or 0.0
 
 	return nViewPitchAngle or 0.0
+end
+
+function WeaponHolder:ResolveCameraTransform()
+	local oCameraActor	= self:ResolveActor(self.sPlayerCameraActorName)
+
+	return oCameraActor and oCameraActor:GetTransform() or nil
+end
+
+function WeaponHolder:LerpVector3(vFrom, vTo, nAlpha)
+	local nClampedAlpha	= self:Clamp(nAlpha or 0.0, 0.0, 1.0)
+
+	return vFrom + ((vTo - vFrom) * nClampedAlpha)
+end
+
+function WeaponHolder:NormalizeQuaternion(qValue)
+	if not qValue then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nLengthSq	= (qValue.x * qValue.x) + (qValue.y * qValue.y) + (qValue.z * qValue.z) + (qValue.w * qValue.w)
+
+	if nLengthSq <= 0.0001 then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nInvLength	= 1.0 / math.sqrt(nLengthSq)
+
+	return Quaternion.new(qValue.x * nInvLength, qValue.y * nInvLength, qValue.z * nInvLength, qValue.w * nInvLength)
+end
+
+function WeaponHolder:InverseQuaternion(qValue)
+	if not qValue then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nLengthSq	= (qValue.x * qValue.x) + (qValue.y * qValue.y) + (qValue.z * qValue.z) + (qValue.w * qValue.w)
+
+	if nLengthSq <= 0.0001 then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nInvLengthSq	= 1.0 / nLengthSq
+
+	return Quaternion.new(-qValue.x * nInvLengthSq, -qValue.y * nInvLengthSq, -qValue.z * nInvLengthSq, qValue.w * nInvLengthSq)
+end
+
+function WeaponHolder:BlendQuaternion(qFrom, qTo, nAlpha)
+	local nClampedAlpha	= self:Clamp(nAlpha or 0.0, 0.0, 1.0)
+	local qSafeFrom		= self:NormalizeQuaternion(qFrom)
+	local qSafeTo		= self:NormalizeQuaternion(qTo)
+	local nDot			= (qSafeFrom.x * qSafeTo.x) + (qSafeFrom.y * qSafeTo.y) + (qSafeFrom.z * qSafeTo.z) + (qSafeFrom.w * qSafeTo.w)
+	local qAdjustedTo	= nDot < 0.0 and Quaternion.new(-qSafeTo.x, -qSafeTo.y, -qSafeTo.z, -qSafeTo.w) or qSafeTo
+	local nFromWeight	= 1.0 - nClampedAlpha
+	local nToWeight		= nClampedAlpha
+	local qBlended		= Quaternion.new(
+		(qSafeFrom.x * nFromWeight) + (qAdjustedTo.x * nToWeight),
+		(qSafeFrom.y * nFromWeight) + (qAdjustedTo.y * nToWeight),
+		(qSafeFrom.z * nFromWeight) + (qAdjustedTo.z * nToWeight),
+		(qSafeFrom.w * nFromWeight) + (qAdjustedTo.w * nToWeight)
+	)
+
+	return self:NormalizeQuaternion(qBlended)
 end
 
 function WeaponHolder:GetWeaponSocketActor()
