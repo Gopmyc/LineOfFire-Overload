@@ -5,8 +5,8 @@
                 <name>Sopmod_Block3</name>
                 <tag></tag>
                 <active>true</active>
-                <id>179</id>
-                <guid>9865735763927845834</guid>
+                <id>202</id>
+                <guid>15466211927469879601</guid>
                 <prefab_source>Prefabs/Weapons/Sopmod_Block3.ovprefab</prefab_source>
                 <prefab_node_guid>1118434742645547481</prefab_node_guid>
                 <parent>0</parent>
@@ -78,11 +78,11 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>180</id>
-                <guid>12821144335318485466</guid>
+                <id>203</id>
+                <guid>7304920093301451385</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>18255031475517384145</prefab_node_guid>
-                <parent>179</parent>
+                <parent>202</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -93,10 +93,10 @@
                                 <z>0.1</z>
                             </position>
                             <rotation>
-                                <x>0</x>
-                                <y>0</y>
-                                <z>0.70710677</z>
-                                <w>0.70710677</w>
+                                <x>-0.70710671</x>
+                                <y>-0.70710683</y>
+                                <z>-3.6176971e-08</z>
+                                <w>-2.5640265e-08</w>
                             </rotation>
                             <scale>
                                 <x>0.99999988</x>
@@ -112,19 +112,19 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>181</id>
-                <guid>4402953576308654128</guid>
+                <id>204</id>
+                <guid>18104729735044752547</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5975057889999898857</prefab_node_guid>
-                <parent>179</parent>
+                <parent>202</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>1.0253686</x>
+                                <x>1</x>
                                 <y>-6.2628821e-08</y>
-                                <z>0</z>
+                                <z>0.30000001</z>
                             </position>
                             <rotation>
                                 <x>0</x>
@@ -133,8 +133,8 @@
                                 <w>0.70710671</w>
                             </rotation>
                             <scale>
-                                <x>0.99999994</x>
-                                <y>1</y>
+                                <x>0.99999982</x>
+                                <y>0.99999988</y>
                                 <z>0.99999988</z>
                             </scale>
                         </data>

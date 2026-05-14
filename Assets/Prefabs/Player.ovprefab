@@ -5,8 +5,8 @@
                 <name>Player</name>
                 <tag></tag>
                 <active>true</active>
-                <id>139</id>
-                <guid>11266969111662352184</guid>
+                <id>205</id>
+                <guid>17236741799939679732</guid>
                 <prefab_source>Prefabs/Player.ovprefab</prefab_source>
                 <prefab_node_guid>2715281165982403010</prefab_node_guid>
                 <parent>0</parent>
@@ -52,11 +52,11 @@
                 <name>Player Physics</name>
                 <tag></tag>
                 <active>true</active>
-                <id>140</id>
-                <guid>7437039182439202848</guid>
+                <id>206</id>
+                <guid>2414039330428521816</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>15159312095306512330</prefab_node_guid>
-                <parent>139</parent>
+                <parent>205</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -132,6 +132,7 @@
                         <type>Scripts/Player/Weapon/WeaponHolder.lua</type>
                         <data>
                             <script_properties>
+                                <nSocketLocalPositionX type="number">-0.59999999999999998</nSocketLocalPositionX>
                                 <oDefaultWeaponActor type="actor">15181633247600687285</oDefaultWeaponActor>
                             </script_properties>
                         </data>
@@ -146,11 +147,11 @@
                 <name>Player Model</name>
                 <tag></tag>
                 <active>true</active>
-                <id>141</id>
-                <guid>4157354146594806438</guid>
+                <id>207</id>
+                <guid>4414094651879713770</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>11683098742382515163</prefab_node_guid>
-                <parent>140</parent>
+                <parent>206</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -229,11 +230,11 @@
                 <name>Player Camera</name>
                 <tag></tag>
                 <active>true</active>
-                <id>142</id>
-                <guid>1104332179800296402</guid>
+                <id>208</id>
+                <guid>9159542069452072526</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>1445865113735604112</prefab_node_guid>
-                <parent>141</parent>
+                <parent>207</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -280,11 +281,11 @@
                 <name>WeaponSocket</name>
                 <tag></tag>
                 <active>true</active>
-                <id>143</id>
-                <guid>1900338924703485419</guid>
+                <id>209</id>
+                <guid>348685517579135228</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>13657967729575309312</prefab_node_guid>
-                <parent>142</parent>
+                <parent>207</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -314,11 +315,11 @@
                 <name>Hand_R_Target</name>
                 <tag></tag>
                 <active>true</active>
-                <id>144</id>
-                <guid>653037425533334526</guid>
+                <id>210</id>
+                <guid>12653143840151476626</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>16533161397411065856</prefab_node_guid>
-                <parent>141</parent>
+                <parent>207</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -348,11 +349,11 @@
                 <name>Hand_L_Target</name>
                 <tag></tag>
                 <active>true</active>
-                <id>145</id>
-                <guid>11438489604228110399</guid>
+                <id>211</id>
+                <guid>10987751211450348298</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5552579215148020736</prefab_node_guid>
-                <parent>141</parent>
+                <parent>207</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
