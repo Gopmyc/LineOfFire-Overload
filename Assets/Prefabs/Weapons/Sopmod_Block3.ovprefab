@@ -5,8 +5,8 @@
                 <name>Sopmod_Block3</name>
                 <tag></tag>
                 <active>true</active>
-                <id>202</id>
-                <guid>15466211927469879601</guid>
+                <id>212</id>
+                <guid>3111484412068091877</guid>
                 <prefab_source>Prefabs/Weapons/Sopmod_Block3.ovprefab</prefab_source>
                 <prefab_node_guid>1118434742645547481</prefab_node_guid>
                 <parent>0</parent>
@@ -78,11 +78,11 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>203</id>
-                <guid>7304920093301451385</guid>
+                <id>213</id>
+                <guid>16575385337288075935</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>18255031475517384145</prefab_node_guid>
-                <parent>202</parent>
+                <parent>212</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -112,11 +112,11 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>204</id>
-                <guid>18104729735044752547</guid>
+                <id>214</id>
+                <guid>11681114423700607841</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5975057889999898857</prefab_node_guid>
-                <parent>202</parent>
+                <parent>212</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
