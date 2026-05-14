@@ -20,6 +20,15 @@ local WeaponGripProfile	=
 	nSocketUpperBodyYawWeight	= 1.0,
 	nSocketUpperBodyPitchWeight	= 1.0,
 	nSocketPitchPositionWeight	= 1.0,
+	nAimOffsetX				= 0.0,
+	nAimOffsetY				= 0.0,
+	nAimOffsetZ				= 0.0,
+	nAimRotationPitch		= 0.0,
+	nAimRotationYaw			= 0.0,
+	nAimRotationRoll		= 0.0,
+	nAimBlendWeight			= 0.0,
+	nAimOffsetWeight		= 1.0,
+	nAimRotationWeight		= 1.0,
 
 	_private	=
 	{
@@ -95,6 +104,36 @@ end
 
 function WeaponGripProfile:GetSocketPitchPositionWeight()
 	local nWeight	= self.nSocketPitchPositionWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetAimOffset()
+	return Vector3.new(self.nAimOffsetX or 0.0, self.nAimOffsetY or 0.0, self.nAimOffsetZ or 0.0)
+end
+
+function WeaponGripProfile:GetAimRotation()
+	local nPitch	= self.nAimRotationPitch or 0.0
+	local nYaw	= self.nAimRotationYaw or 0.0
+	local nRoll	= self.nAimRotationRoll or 0.0
+
+	return Quaternion.new(Vector3.new(nPitch, nYaw, nRoll))
+end
+
+function WeaponGripProfile:GetAimBlendWeight()
+	local nWeight	= self.nAimBlendWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetAimOffsetWeight()
+	local nWeight	= self.nAimOffsetWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetAimRotationWeight()
+	local nWeight	= self.nAimRotationWeight
 
 	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
 end

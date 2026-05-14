@@ -29,6 +29,7 @@ local Weapon	=
 		bDidLogMissingHandL	= false,
 		bDidLogMissingGripProfile	= false,
 		nDynamicYawOffsetY	= 0.0,
+		nAimAlpha			= 0.0,
 	}
 }
 
@@ -151,8 +152,28 @@ function Weapon:ApplyEquipOffset()
 		end
 	end
 
-	oRootTransform:SetLocalPosition(vEquipOffset)
-	oRootTransform:SetLocalRotation(qEquipRotation)
+	local vFinalEquipOffset		= vEquipOffset
+	local qFinalEquipRotation	= qEquipRotation
+	local nAimAlphaRaw			= self._private.nAimAlpha or 0.0
+	local nAimBlendWeight		= oGripProfile and oGripProfile.GetAimBlendWeight and oGripProfile:GetAimBlendWeight() or 1.0
+	local nAimAlpha			= self:Clamp(nAimAlphaRaw * nAimBlendWeight, 0.0, 1.0)
+
+	if nAimAlpha > 0.0001 then
+		local vAimOffsetLocal		= oGripProfile and oGripProfile.GetAimOffset and oGripProfile:GetAimOffset() or Vector3.new(0, 0, 0)
+		local qAimOffsetRotation	= oGripProfile and oGripProfile.GetAimRotation and oGripProfile:GetAimRotation() or Quaternion.new(Vector3.new(0, 0, 0))
+		local nAimOffsetWeight		= oGripProfile and oGripProfile.GetAimOffsetWeight and oGripProfile:GetAimOffsetWeight() or 1.0
+		local nAimRotationWeight	= oGripProfile and oGripProfile.GetAimRotationWeight and oGripProfile:GetAimRotationWeight() or 1.0
+		local qIdentityRotation		= Quaternion.new(Vector3.new(0, 0, 0))
+		local qWeightedAimRotation	= self:BlendQuaternion(qIdentityRotation, qAimOffsetRotation, self:Clamp(nAimRotationWeight, 0.0, 1.0))
+		local qAimEquipRotation		= qEquipRotation * qWeightedAimRotation
+		local vAimEquipOffset		= vEquipOffset + (qEquipRotation * (vAimOffsetLocal * nAimOffsetWeight))
+
+		vFinalEquipOffset		= self:LerpVector3(vEquipOffset, vAimEquipOffset, nAimAlpha)
+		qFinalEquipRotation		= self:BlendQuaternion(qEquipRotation, qAimEquipRotation, nAimAlpha)
+	end
+
+	oRootTransform:SetLocalPosition(vFinalEquipOffset)
+	oRootTransform:SetLocalRotation(qFinalEquipRotation)
 end
 
 function Weapon:SetDynamicYawOffsetY(nYawOffset)
@@ -172,6 +193,18 @@ end
 
 function Weapon:ResetDynamicYawOffsetY()
 	self._private.nDynamicYawOffsetY	= 0.0
+end
+
+function Weapon:SetAimAlpha(nAimAlpha)
+	self._private.nAimAlpha	= self:Clamp(nAimAlpha or 0.0, 0.0, 1.0)
+end
+
+function Weapon:GetAimAlpha()
+	return self._private.nAimAlpha or 0.0
+end
+
+function Weapon:ResetAimAlpha()
+	self._private.nAimAlpha	= 0.0
 end
 
 function Weapon:ResolveAutoGripYawAngle()
@@ -258,6 +291,46 @@ end
 
 function Weapon:HasValidGripPoints()
 	return self._private.oHandRightTransform ~= nil and self._private.oHandLeftTransform ~= nil
+end
+
+function Weapon:LerpVector3(vFrom, vTo, nAlpha)
+	local nClampedAlpha	= self:Clamp(nAlpha or 0.0, 0.0, 1.0)
+
+	return vFrom + ((vTo - vFrom) * nClampedAlpha)
+end
+
+function Weapon:NormalizeQuaternion(qValue)
+	if not qValue then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nLengthSq	= (qValue.x * qValue.x) + (qValue.y * qValue.y) + (qValue.z * qValue.z) + (qValue.w * qValue.w)
+
+	if nLengthSq <= 0.0001 then
+		return Quaternion.new(Vector3.new(0, 0, 0))
+	end
+
+	local nInvLength	= 1.0 / math.sqrt(nLengthSq)
+
+	return Quaternion.new(qValue.x * nInvLength, qValue.y * nInvLength, qValue.z * nInvLength, qValue.w * nInvLength)
+end
+
+function Weapon:BlendQuaternion(qFrom, qTo, nAlpha)
+	local nClampedAlpha	= self:Clamp(nAlpha or 0.0, 0.0, 1.0)
+	local qSafeFrom		= self:NormalizeQuaternion(qFrom)
+	local qSafeTo		= self:NormalizeQuaternion(qTo)
+	local nDot			= (qSafeFrom.x * qSafeTo.x) + (qSafeFrom.y * qSafeTo.y) + (qSafeFrom.z * qSafeTo.z) + (qSafeFrom.w * qSafeTo.w)
+	local qAdjustedTo	= nDot < 0.0 and Quaternion.new(-qSafeTo.x, -qSafeTo.y, -qSafeTo.z, -qSafeTo.w) or qSafeTo
+	local nFromWeight	= 1.0 - nClampedAlpha
+	local nToWeight		= nClampedAlpha
+	local qBlended		= Quaternion.new(
+		(qSafeFrom.x * nFromWeight) + (qAdjustedTo.x * nToWeight),
+		(qSafeFrom.y * nFromWeight) + (qAdjustedTo.y * nToWeight),
+		(qSafeFrom.z * nFromWeight) + (qAdjustedTo.z * nToWeight),
+		(qSafeFrom.w * nFromWeight) + (qAdjustedTo.w * nToWeight)
+	)
+
+	return self:NormalizeQuaternion(qBlended)
 end
 
 return Weapon
