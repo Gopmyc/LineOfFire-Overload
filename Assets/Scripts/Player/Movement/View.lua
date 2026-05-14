@@ -19,6 +19,7 @@ local View	=
 		oYawTransform		= nil,
 		oCameraTransform	= nil,
 		oController		= nil,
+		oWeaponHolder		= nil,
 		vLastMousePosition	= Vector2.new(0, 0),
 		nBodyYawAngle		= 0.0,
 		nCameraLocalYawAngle	= 0.0,
@@ -40,6 +41,7 @@ function View:OnAwake()
 	local oPhysicsActor				= self:FindActorByNameRecursive(self.owner, sPhysicsActorName)
 	local oYawTransform				= oPhysicsActor and oPhysicsActor:GetTransform() or self.owner:GetTransform()
 	local oController				= oPhysicsActor and oPhysicsActor:GetBehaviour("Controller") or nil
+	local oWeaponHolder			= oPhysicsActor and oPhysicsActor:GetBehaviour("WeaponHolder") or nil
 	local oCameraActor				= self:FindActorByNameRecursive(self.owner, sCameraActorName)
 	local oCameraTransform			= oCameraActor and oCameraActor:GetTransform() or nil
 	local nCurrentBodyYaw			= oYawTransform:GetLocalRotation():EulerAngles().y
@@ -50,6 +52,7 @@ function View:OnAwake()
 	self._private.oYawTransform		= oYawTransform
 	self._private.oCameraTransform		= oCameraTransform
 	self._private.oController			= oController
+	self._private.oWeaponHolder		= oWeaponHolder
 	self._private.nBodyYawAngle		= nCurrentBodyYaw
 	self._private.nCameraLocalYawAngle	= nCurrentCameraLocalYaw
 	self._private.nLastBodyYawDelta		= 0.0
@@ -100,7 +103,9 @@ function View:OnUpdate(nDeltaTime)
 
 	local nCameraLocalYawAngle	= self._private.nCameraLocalYawAngle
 	local bHasMovementInput		= self:IsMovementInputPressed()
-	local bNeedsBodyFollowUpdate	= bHasMovementInput and nCameraLocalYawAngle ~= 0.0 or self:NeedsBodyFollowUpdate()
+	local bIsAimingDownSights	= self:IsAimingDownSights()
+	local bShouldForceBodyFollow	= bIsAimingDownSights and nCameraLocalYawAngle ~= 0.0
+	local bNeedsBodyFollowUpdate	= (bHasMovementInput or bShouldForceBodyFollow) and nCameraLocalYawAngle ~= 0.0 or self:NeedsBodyFollowUpdate()
 
 	if nYawDelta == 0 and nPitchDelta == 0 and not bNeedsBodyFollowUpdate then
 		self._private.nLastBodyYawDelta	= 0.0
@@ -113,7 +118,7 @@ function View:OnUpdate(nDeltaTime)
 	local nBodyYawDelta			= 0.0
 	local nUpdatedFreelookYaw	= 0.0
 
-	if bHasMovementInput then
+	if bHasMovementInput or bIsAimingDownSights then
 		nBodyYawDelta			= nCameraLocalYawAngle + nYawDelta
 		nUpdatedFreelookYaw		= 0.0
 	else
@@ -142,6 +147,20 @@ function View:OnUpdate(nDeltaTime)
 	if oCameraTransform then
 		oCameraTransform:SetLocalRotation(Quaternion.new(Vector3.new(nPitchAngle, nUpdatedFreelookYaw, 0)))
 	end
+end
+
+function View:IsAimingDownSights()
+	local oWeaponHolder	= self._private.oWeaponHolder
+
+	if not oWeaponHolder then
+		local sPhysicsActorName	= self._private.sPhysicsActorName
+		local oPhysicsActor	= self:FindActorByNameRecursive(self.owner, sPhysicsActorName)
+
+		oWeaponHolder				= oPhysicsActor and oPhysicsActor:GetBehaviour("WeaponHolder") or nil
+		self._private.oWeaponHolder	= oWeaponHolder
+	end
+
+	return oWeaponHolder and oWeaponHolder.IsAimingDownSights and oWeaponHolder:IsAimingDownSights() or false
 end
 
 function View:ComputeBodyYawDelta(nCameraLocalYawAngle, nDeltaTime)
