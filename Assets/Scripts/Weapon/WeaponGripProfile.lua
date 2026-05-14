@@ -17,6 +17,8 @@ local WeaponGripProfile	=
 	nLeftHandRotationWeight		= 1.0,
 	nRightShoulderAssistWeight	= 1.0,
 	nLeftShoulderAssistWeight	= 1.0,
+	nSocketUpperBodyYawWeight	= 1.0,
+	nSocketUpperBodyPitchWeight	= 1.0,
 
 	_private	=
 	{
@@ -74,6 +76,18 @@ end
 function WeaponGripProfile:GetShoulderAssistWeight(sArmName)
 	local bIsRightArm	= sArmName == "RightArm"
 	local nWeight		= bIsRightArm and self.nRightShoulderAssistWeight or self.nLeftShoulderAssistWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetSocketUpperBodyYawWeight()
+	local nWeight	= self.nSocketUpperBodyYawWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetSocketUpperBodyPitchWeight()
+	local nWeight	= self.nSocketUpperBodyPitchWeight
 
 	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
 end

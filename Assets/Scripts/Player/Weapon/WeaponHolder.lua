@@ -12,6 +12,14 @@ local WeaponHolder	=
 	nSocketLocalRotationX		= 0.0,
 	nSocketLocalRotationY		= 0.0,
 	nSocketLocalRotationZ		= 0.0,
+	bFollowUpperBodyYawYOnly	= true,
+	bUseTorsoAimDirectSocketRotation	= true,
+	bEnableUpperBodySocketSync	= false,
+	nUpperBodySocketYawWeight	= 1.0,
+	nUpperBodySocketPitchWeight	= 0.0,
+	nUpperBodySocketSmoothSpeed	= 14.0,
+	nUpperBodySocketMaxYawAngle	= 0.0,
+	nUpperBodySocketMaxPitchAngle	= 0.0,
 	bEquipOnStart				= true,
 	bEnableWeaponLogs			= true,
 
@@ -22,6 +30,10 @@ local WeaponHolder	=
 		oSocketTransform			= nil,
 		oEquippedWeaponActor		= nil,
 		oEquippedWeapon				= nil,
+		oHeadLook					= nil,
+		qSocketBaseLocalRotation	= nil,
+		nSocketUpperBodyPitchAngle	= 0.0,
+		nSocketUpperBodyYawAngle	= 0.0,
 		bDidLogMissingSocket		= false,
 	}
 }
@@ -31,9 +43,11 @@ function WeaponHolder:OnAwake()
 	self._private.oPlayerActor				= self.owner:GetParent() or self.owner
 	self._private.oSocketActor				= self:ResolveActor(self.sWeaponSocketActorName)
 	self._private.oSocketTransform			= self._private.oSocketActor and self._private.oSocketActor:GetTransform() or nil
+	self._private.oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
 
 	self:EnsureSocketParent()
 	self:ApplySocketLocalPose()
+	self:CacheSocketBaseLocalRotation()
 	self:ValidateRequiredActors()
 end
 
@@ -44,6 +58,7 @@ function WeaponHolder:OnStart()
 end
 
 function WeaponHolder:OnLateUpdate(nDeltaTime)
+	self:UpdateSocketUpperBodySync(nDeltaTime)
 	self:UpdateEquippedWeaponPose(nDeltaTime)
 end
 
@@ -87,6 +102,91 @@ function WeaponHolder:ApplySocketLocalPose()
 
 	oSocketTransform:SetLocalPosition(vSocketLocalPosition)
 	oSocketTransform:SetLocalRotation(qSocketLocalRotation)
+
+	return true
+end
+
+function WeaponHolder:CacheSocketBaseLocalRotation()
+	local oSocketTransform	= self._private.oSocketTransform
+
+	if not oSocketTransform then
+		self._private.qSocketBaseLocalRotation	= nil
+		return nil
+	end
+
+	local qSocketBaseLocalRotation	= oSocketTransform:GetLocalRotation()
+
+	self._private.qSocketBaseLocalRotation	= qSocketBaseLocalRotation
+
+	return qSocketBaseLocalRotation
+end
+
+function WeaponHolder:UpdateSocketUpperBodySync(nDeltaTime)
+	local oSocketTransform	= self._private.oSocketTransform
+
+	if not oSocketTransform then
+		return false
+	end
+
+	if not self.bEnableUpperBodySocketSync then
+		local qSocketBaseLocalRotation	= self._private.qSocketBaseLocalRotation or self:CacheSocketBaseLocalRotation()
+
+		self._private.nSocketUpperBodyPitchAngle	= 0.0
+		self._private.nSocketUpperBodyYawAngle		= 0.0
+
+		if qSocketBaseLocalRotation then
+			oSocketTransform:SetLocalRotation(qSocketBaseLocalRotation)
+		end
+
+		return true
+	end
+
+	local oHeadLook	= self._private.oHeadLook
+
+	if not oHeadLook then
+		oHeadLook					= self.owner:GetBehaviour("PlayerHeadLook") or self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
+		self._private.oHeadLook		= oHeadLook
+	end
+
+	local nSocketTargetPitchAngle	= 0.0
+	local nSocketTargetYawAngle		= 0.0
+	local bCanSyncSocketWithHeadLook	= self.bEnableUpperBodySocketSync and oHeadLook and oHeadLook.GetUpperBodyAimOffsetAngles
+
+	if bCanSyncSocketWithHeadLook then
+		local nUpperBodyPitchAngle, nUpperBodyYawAngle	= oHeadLook:GetUpperBodyAimOffsetAngles()
+		local bFollowUpperBodyYawYOnly	= self.bFollowUpperBodyYawYOnly
+		local nProfileSocketPitchWeight	= self:ResolveSocketUpperBodyPitchProfileWeight()
+		local nProfileSocketYawWeight	= self:ResolveSocketUpperBodyYawProfileWeight()
+		local nSocketPitchWeight	= (self.nUpperBodySocketPitchWeight or 0.0) * nProfileSocketPitchWeight
+		local nSocketYawWeight		= (self.nUpperBodySocketYawWeight or 0.0) * nProfileSocketYawWeight
+		local nWeightedPitchAngle	= bFollowUpperBodyYawYOnly and 0.0 or (nUpperBodyPitchAngle * nSocketPitchWeight)
+		local nWeightedYawAngle		= nUpperBodyYawAngle * nSocketYawWeight
+		local nMaxPitchAngle		= self.nUpperBodySocketMaxPitchAngle or 0.0
+		local nMaxYawAngle			= self.nUpperBodySocketMaxYawAngle or 0.0
+
+		nSocketTargetPitchAngle	= nMaxPitchAngle > 0.0 and self:Clamp(nWeightedPitchAngle, -nMaxPitchAngle, nMaxPitchAngle) or nWeightedPitchAngle
+		nSocketTargetYawAngle	= nMaxYawAngle > 0.0 and self:Clamp(nWeightedYawAngle, -nMaxYawAngle, nMaxYawAngle) or nWeightedYawAngle
+	end
+
+	local bUseDirectSocketRotation	= self.bUseTorsoAimDirectSocketRotation
+	local nSocketBlendAlpha			= bUseDirectSocketRotation and 1.0 or self:Clamp(nDeltaTime * (self.nUpperBodySocketSmoothSpeed or 0.0), 0.0, 1.0)
+	local nCurrentSocketPitchAngle	= self._private.nSocketUpperBodyPitchAngle or 0.0
+	local nCurrentSocketYawAngle	= self._private.nSocketUpperBodyYawAngle or 0.0
+	local nUpdatedSocketPitchAngle	= self:LerpAngle(nCurrentSocketPitchAngle, nSocketTargetPitchAngle, nSocketBlendAlpha)
+	local nUpdatedSocketYawAngle	= self:LerpAngle(nCurrentSocketYawAngle, nSocketTargetYawAngle, nSocketBlendAlpha)
+	local qSocketBaseLocalRotation	= self._private.qSocketBaseLocalRotation or self:CacheSocketBaseLocalRotation()
+
+	self._private.nSocketUpperBodyPitchAngle	= nUpdatedSocketPitchAngle
+	self._private.nSocketUpperBodyYawAngle		= nUpdatedSocketYawAngle
+
+	if not qSocketBaseLocalRotation then
+		return false
+	end
+
+	local qUpperBodySocketOffsetRotation	= Quaternion.new(Vector3.new(nUpdatedSocketPitchAngle, nUpdatedSocketYawAngle, 0.0))
+	local qSocketTargetLocalRotation		= qSocketBaseLocalRotation * qUpperBodySocketOffsetRotation
+
+	oSocketTransform:SetLocalRotation(qSocketTargetLocalRotation)
 
 	return true
 end
@@ -198,6 +298,22 @@ end
 
 function WeaponHolder:GetEquippedWeapon()
 	return self._private.oEquippedWeapon
+end
+
+function WeaponHolder:ResolveSocketUpperBodyYawProfileWeight()
+	local oWeapon		= self._private.oEquippedWeapon
+	local oGripProfile	= oWeapon and oWeapon.GetGripProfile and oWeapon:GetGripProfile() or nil
+	local nWeight		= oGripProfile and oGripProfile.GetSocketUpperBodyYawWeight and oGripProfile:GetSocketUpperBodyYawWeight() or 1.0
+
+	return nWeight or 1.0
+end
+
+function WeaponHolder:ResolveSocketUpperBodyPitchProfileWeight()
+	local oWeapon		= self._private.oEquippedWeapon
+	local oGripProfile	= oWeapon and oWeapon.GetGripProfile and oWeapon:GetGripProfile() or nil
+	local nWeight		= oGripProfile and oGripProfile.GetSocketUpperBodyPitchWeight and oGripProfile:GetSocketUpperBodyPitchWeight() or 1.0
+
+	return nWeight or 1.0
 end
 
 function WeaponHolder:GetWeaponSocketActor()
