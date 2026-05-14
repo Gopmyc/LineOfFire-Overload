@@ -33,6 +33,8 @@ local PlayerArmIK	=
 		oSkinnedMeshRenderer	= nil,
 		oModelTransform		= nil,
 		oWeaponHolder		= nil,
+		oPlayerState		= nil,
+		sLastPlayerState	= nil,
 		tBoneIndices		= {},
 		tArmRuntimeByName	= {},
 		nWeaponYawAssistCurrent	= 0.0,
@@ -94,9 +96,11 @@ function PlayerArmIK:OnAwake()
 	self._private.oSkinnedMeshRenderer	= self:ResolveSkinnedMeshRenderer()
 	self._private.oModelTransform		= self:ResolveModelTransform()
 	self._private.oWeaponHolder			= self:FindBehaviourInParents(self.owner, "WeaponHolder")
+	self._private.oPlayerState			= self:FindBehaviourInParents(self.owner, "PlayerState")
 	self._private.oHeadLook				= self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
 	self._private.tBoneIndices			= self:ResolveBoneIndices(self._private.oSkinnedMeshRenderer)
 	self._private.qUpperBodyCompensationCurrent	= Quaternion.new(Vector3.new(0, 0, 0))
+	self._private.sLastPlayerState		= self:GetCurrentPlayerStateName()
 	self:InitializeArmRuntime()
 end
 
@@ -107,6 +111,7 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 	local oModelTransform			= self._private.oModelTransform
 
 	self._private.oCurrentWeapon		= oWeapon
+	self:HandlePlayerStateRuntimeReset()
 	self:UpdateUpperBodyTargetCompensation(nDeltaTime)
 
 	if not self.bEnableIK then
@@ -145,6 +150,45 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 			self:ResetArmRuntime(tArmConfig)
 		end
 	end
+end
+
+function PlayerArmIK:HandlePlayerStateRuntimeReset()
+	local sCurrentPlayerState	= self:GetCurrentPlayerStateName()
+	local sLastPlayerState		= self._private.sLastPlayerState
+	local bDidStateChange		= sCurrentPlayerState ~= nil and sLastPlayerState ~= nil and sCurrentPlayerState ~= sLastPlayerState
+
+	if bDidStateChange then
+		local bWasCrouchingState	= self:IsCrouchingStateName(sLastPlayerState)
+		local bIsCrouchingState		= self:IsCrouchingStateName(sCurrentPlayerState)
+		local bDidToggleCrouchState	= bWasCrouchingState ~= bIsCrouchingState
+
+		if bDidToggleCrouchState then
+			self:ResetAllArmRuntime()
+		end
+	end
+
+	self._private.sLastPlayerState	= sCurrentPlayerState or sLastPlayerState
+end
+
+function PlayerArmIK:GetCurrentPlayerStateName()
+	local oPlayerState	= self._private.oPlayerState
+
+	if not oPlayerState then
+		oPlayerState					= self:FindBehaviourInParents(self.owner, "PlayerState")
+		self._private.oPlayerState		= oPlayerState
+	end
+
+	local sCurrentState	= oPlayerState and oPlayerState.GetCurrentState and oPlayerState:GetCurrentState() or nil
+
+	return sCurrentState
+end
+
+function PlayerArmIK:IsCrouchingStateName(sStateName)
+	if not sStateName then
+		return false
+	end
+
+	return sStateName == "CrouchingIdle" or sStateName == "CrouchingWalking"
 end
 
 function PlayerArmIK:UpdateUpperBodyTargetCompensation(nDeltaTime)
