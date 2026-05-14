@@ -19,6 +19,7 @@ local WeaponGripProfile	=
 	nLeftShoulderAssistWeight	= 1.0,
 	nSocketUpperBodyYawWeight	= 1.0,
 	nSocketUpperBodyPitchWeight	= 1.0,
+	nSocketPitchPositionWeight	= 1.0,
 
 	_private	=
 	{
@@ -88,6 +89,12 @@ end
 
 function WeaponGripProfile:GetSocketUpperBodyPitchWeight()
 	local nWeight	= self.nSocketUpperBodyPitchWeight
+
+	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
+end
+
+function WeaponGripProfile:GetSocketPitchPositionWeight()
+	local nWeight	= self.nSocketPitchPositionWeight
 
 	return self:ClampValue(nWeight or 1.0, 0.0, 2.0)
 end
