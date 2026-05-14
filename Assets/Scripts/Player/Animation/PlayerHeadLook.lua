@@ -324,4 +324,18 @@ function PlayerHeadLook:ApplyBoneOffset(oSkinnedMeshRenderer, nBoneIndex, nPitch
 	oSkinnedMeshRenderer:SetBoneLocalRotation(nBoneIndex, qTargetBoneRotation)
 end
 
+function PlayerHeadLook:GetUpperBodyAimOffsetAngles()
+	local tBoneAngles		= self._private.tBoneAngles
+	local nUpperBodyPitchAngle	= (tBoneAngles.nSpinePitch or 0.0) + (tBoneAngles.nSpine1Pitch or 0.0) + (tBoneAngles.nSpine2Pitch or 0.0)
+	local nUpperBodyYawAngle	= (tBoneAngles.nSpineYaw or 0.0) + (tBoneAngles.nSpine1Yaw or 0.0) + (tBoneAngles.nSpine2Yaw or 0.0)
+
+	return nUpperBodyPitchAngle, nUpperBodyYawAngle
+end
+
+function PlayerHeadLook:GetUpperBodyAimOffsetRotation()
+	local nUpperBodyPitchAngle, nUpperBodyYawAngle	= self:GetUpperBodyAimOffsetAngles()
+
+	return Quaternion.new(Vector3.new(nUpperBodyPitchAngle, nUpperBodyYawAngle, 0.0))
+end
+
 return PlayerHeadLook

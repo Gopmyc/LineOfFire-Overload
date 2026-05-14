@@ -12,7 +12,7 @@ local PlayerArmIK	=
 	bEnableHandRotationAlignment		= true,
 	nHandRotationSmoothSpeed		= 24.0,
 	nHandRotationWeight			= 0.9,
-	bEnableWeaponYawAssist		= true,
+	bEnableWeaponYawAssist		= false,
 	nWeaponYawAssistSpeed		= 40.0,
 	nWeaponYawAssistReturnSpeed	= 10.0,
 	nWeaponYawAssistMaxOffset	= 45.0,
@@ -20,6 +20,11 @@ local PlayerArmIK	=
 	nWeaponYawAssistDeadZone	= 0.005,
 	nWeaponYawAssistAngleDeadZone	= 0.35,
 	nWeaponYawAssistSign		= 1.0,
+	bEnableUpperBodyTargetCompensation	= false,
+	nUpperBodyTargetCompensationWeight	= 0.78,
+	nUpperBodyTargetCompensationPitchWeight	= 0.42,
+	nUpperBodyTargetCompensationSmoothSpeed	= 14.0,
+	nShoulderAssistMaxAngle		= 42.0,
 	bEnableIKLogs				= false,
 
 	_private	=
@@ -33,6 +38,8 @@ local PlayerArmIK	=
 		nWeaponYawAssistCurrent	= 0.0,
 		oWeaponYawAssistLastWeapon	= nil,
 		oCurrentWeapon		= nil,
+		oHeadLook			= nil,
+		qUpperBodyCompensationCurrent	= nil,
 	}
 }
 
@@ -74,7 +81,7 @@ local tArmConfigs	=
 		sForeArmKey		= "sLeftForeArm",
 		sHandKey		= "sLeftHand",
 		sWeaponGripKey	= "sLeftGrip",
-		nElbowBendSign	= 1.0,
+		nElbowBendSign	= -1.0,
 		nDefaultGripOffsetX	= 0.0,
 		nDefaultGripOffsetY	= 0.0,
 		nDefaultGripOffsetZ	= 0.0,
@@ -87,7 +94,9 @@ function PlayerArmIK:OnAwake()
 	self._private.oSkinnedMeshRenderer	= self:ResolveSkinnedMeshRenderer()
 	self._private.oModelTransform		= self:ResolveModelTransform()
 	self._private.oWeaponHolder			= self:FindBehaviourInParents(self.owner, "WeaponHolder")
+	self._private.oHeadLook				= self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
 	self._private.tBoneIndices			= self:ResolveBoneIndices(self._private.oSkinnedMeshRenderer)
+	self._private.qUpperBodyCompensationCurrent	= Quaternion.new(Vector3.new(0, 0, 0))
 	self:InitializeArmRuntime()
 end
 
@@ -98,6 +107,7 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 	local oModelTransform			= self._private.oModelTransform
 
 	self._private.oCurrentWeapon		= oWeapon
+	self:UpdateUpperBodyTargetCompensation(nDeltaTime)
 
 	if not self.bEnableIK then
 		self:ResetAllArmRuntime()
@@ -135,6 +145,56 @@ function PlayerArmIK:OnLateUpdate(nDeltaTime)
 			self:ResetArmRuntime(tArmConfig)
 		end
 	end
+end
+
+function PlayerArmIK:UpdateUpperBodyTargetCompensation(nDeltaTime)
+	local qIdentity					= Quaternion.new(Vector3.new(0, 0, 0))
+	local bEnableCompensation		= self.bEnableUpperBodyTargetCompensation
+	local oHeadLook					= self._private.oHeadLook
+	local qCompensationTarget		= qIdentity
+
+	if not oHeadLook then
+		oHeadLook					= self:FindBehaviourInParents(self.owner, "PlayerHeadLook")
+		self._private.oHeadLook		= oHeadLook
+	end
+
+	if bEnableCompensation and oHeadLook and oHeadLook.GetUpperBodyAimOffsetAngles then
+		local nUpperBodyPitchAngle, nUpperBodyYawAngle	= oHeadLook:GetUpperBodyAimOffsetAngles()
+		local nCompensationWeight			= self:Clamp(self.nUpperBodyTargetCompensationWeight or 0.0, 0.0, 1.0)
+		local nCompensatedPitchWeight		= self:Clamp((self.nUpperBodyTargetCompensationPitchWeight or 1.0) * nCompensationWeight, 0.0, 1.0)
+		local nCompensatedPitchAngle		= nUpperBodyPitchAngle * nCompensatedPitchWeight
+		local nCompensatedYawAngle			= nUpperBodyYawAngle * nCompensationWeight
+
+		qCompensationTarget				= Quaternion.new(Vector3.new(nCompensatedPitchAngle, nCompensatedYawAngle, 0.0))
+	end
+
+	local qCompensationCurrent		= self._private.qUpperBodyCompensationCurrent or qIdentity
+	local nCompensationBlendAlpha	= nDeltaTime and self:Clamp(nDeltaTime * self.nUpperBodyTargetCompensationSmoothSpeed, 0.0, 1.0) or 1.0
+
+	self._private.qUpperBodyCompensationCurrent	= self:BlendQuaternion(qCompensationCurrent, qCompensationTarget, nCompensationBlendAlpha)
+end
+
+function PlayerArmIK:ResolveUpperBodyCompensatedTargetModelPosition(tChainPose, vTargetModelPosition)
+	if not vTargetModelPosition or not tChainPose or not self.bEnableUpperBodyTargetCompensation then
+		return vTargetModelPosition
+	end
+
+	local qUpperBodyCompensation	= self._private.qUpperBodyCompensationCurrent
+	local tSpine2Pose				= tChainPose.sSpine2
+	local vCompensationPivot		= tSpine2Pose and tSpine2Pose.vModelPosition or nil
+
+	if not qUpperBodyCompensation or not vCompensationPivot then
+		return vTargetModelPosition
+	end
+
+	local vPivotToTarget		= vTargetModelPosition - vCompensationPivot
+	local nPivotToTargetLength	= vPivotToTarget:Length()
+
+	if nPivotToTargetLength <= self.nIKEpsilon then
+		return vTargetModelPosition
+	end
+
+	return vCompensationPivot + (qUpperBodyCompensation * vPivotToTarget)
 end
 
 function PlayerArmIK:ResolveSkinnedMeshRenderer()
@@ -283,8 +343,9 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 	local tArmRuntime		= self:GetArmRuntime(tArmConfig)
 	local tInitialChainPose	= self:BuildBoneChainPose(oSkinnedMeshRenderer, tArmConfig.tChainKeys)
 	if not tInitialChainPose then return false end
+	local vCompensatedTargetModelPosition	= self:ResolveUpperBodyCompensatedTargetModelPosition(tInitialChainPose, vTargetModelPosition)
 
-	local tShoulderAdjustedPose	= self:ApplyShoulderAssist(oSkinnedMeshRenderer, tArmConfig, tInitialChainPose, vTargetModelPosition, nDeltaTime, tArmRuntime)
+	local tShoulderAdjustedPose	= self:ApplyShoulderAssist(oSkinnedMeshRenderer, tArmConfig, tInitialChainPose, vCompensatedTargetModelPosition, nDeltaTime, tArmRuntime)
 	local tWorkingChainPose		= tShoulderAdjustedPose or tInitialChainPose
 
 	local tArmPose		= tWorkingChainPose[tArmConfig.sArmKey]
@@ -309,7 +370,7 @@ function PlayerArmIK:ApplyTwoBoneArmIK(oSkinnedMeshRenderer, tArmConfig, vTarget
 		return false
 	end
 
-	local vArmToTarget			= vTargetModelPosition - vArmPosition
+	local vArmToTarget			= vCompensatedTargetModelPosition - vArmPosition
 	local nTargetDistanceRaw	= vArmToTarget:Length()
 
 	if nTargetDistanceRaw <= nIKEpsilon then
@@ -421,6 +482,18 @@ function PlayerArmIK:ApplyShoulderAssist(oSkinnedMeshRenderer, tArmConfig, tChai
 	end
 
 	local qShoulderDelta		= self:QuaternionFromTo(vShoulderToArm, vShoulderToTarget)
+	local nShoulderAssistMaxAngle	= self.nShoulderAssistMaxAngle or 0.0
+
+	if nShoulderAssistMaxAngle > 0.0 then
+		local nShoulderDeltaAngle	= self:GetQuaternionAngleDegrees(qShoulderDelta)
+
+		if nShoulderDeltaAngle > nShoulderAssistMaxAngle then
+			local nShoulderClampAlpha	= nShoulderAssistMaxAngle / nShoulderDeltaAngle
+
+			qShoulderDelta	= self:BlendQuaternion(Quaternion.new(Vector3.new(0, 0, 0)), qShoulderDelta, nShoulderClampAlpha)
+		end
+	end
+
 	local qShoulderWorldTarget	= qShoulderDelta * tShoulderPose.qModelRotation
 	local qShoulderParentInverse	= self:InverseQuaternion(tShoulderPose.qParentRotation)
 	local qShoulderLocalTarget	= qShoulderParentInverse * qShoulderWorldTarget
@@ -564,6 +637,25 @@ function PlayerArmIK:ResolveWeaponYawAssistDeltaDegrees(oWeapon, oSkinnedMeshRen
 end
 
 function PlayerArmIK:UpdateWeaponYawAssist(oWeapon, oSkinnedMeshRenderer, oModelTransform, nDeltaTime, tGripTargetsWorld)
+	if not self.bEnableWeaponYawAssist then
+		self._private.nWeaponYawAssistCurrent	= 0.0
+		self._private.oWeaponYawAssistLastWeapon	= oWeapon
+
+		if oWeapon then
+			if oWeapon.SetDynamicYawOffsetY then
+				oWeapon:SetDynamicYawOffsetY(0.0)
+			elseif oWeapon.ResetDynamicYawOffsetY then
+				oWeapon:ResetDynamicYawOffsetY()
+			end
+
+			if oWeapon.ApplyEquipOffset then
+				oWeapon:ApplyEquipOffset()
+			end
+		end
+
+		return
+	end
+
 	local nCurrentYawOffset	= self._private.nWeaponYawAssistCurrent or 0.0
 	local oLastWeapon		= self._private.oWeaponYawAssistLastWeapon
 
@@ -737,6 +829,14 @@ function PlayerArmIK:QuaternionFromTo(vFromDirection, vToDirection)
 	local qDelta	= Quaternion.new(vCross.x, vCross.y, vCross.z, 1.0 + nDot)
 
 	return self:NormalizeQuaternion(qDelta)
+end
+
+function PlayerArmIK:GetQuaternionAngleDegrees(qValue)
+	local qNormalized	= self:NormalizeQuaternion(qValue)
+	local nClampedW		= self:Clamp(qNormalized.w, -1.0, 1.0)
+	local nAngleRadians	= 2.0 * math.acos(nClampedW)
+
+	return math.deg(nAngleRadians)
 end
 
 function PlayerArmIK:BlendQuaternion(qFrom, qTo, nAlpha)
