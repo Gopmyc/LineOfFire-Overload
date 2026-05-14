@@ -27,6 +27,7 @@ local Weapon	=
 		bIsEquipped			= false,
 		bDidLogMissingHandR	= false,
 		bDidLogMissingHandL	= false,
+		bDidLogMissingGripProfile	= false,
 		nDynamicYawOffsetY	= 0.0,
 	}
 }
@@ -131,7 +132,7 @@ function Weapon:ApplyEquipOffset()
 
 	if not oRootTransform then return end
 
-	local oGripProfile		= self._private.oGripProfile
+	local oGripProfile		= self:GetGripProfile()
 	local nAutoYaw			= self:ResolveAutoGripYawAngle()
 	local nDynamicYawOffsetY	= self._private.nDynamicYawOffsetY or 0.0
 	local nEquipYaw			= self.nEquipRotationY + nAutoYaw + nDynamicYawOffsetY
@@ -238,7 +239,21 @@ function Weapon:GetSocketActor()
 end
 
 function Weapon:GetGripProfile()
-	return self._private.oGripProfile
+	local oGripProfile	= self._private.oGripProfile
+
+	if oGripProfile then
+		return oGripProfile
+	end
+
+	oGripProfile	= self.owner:GetBehaviour("WeaponGripProfile")
+	self._private.oGripProfile	= oGripProfile
+
+	if not oGripProfile and not self._private.bDidLogMissingGripProfile then
+		Debug.LogWarning("Weapon: missing WeaponGripProfile on '" .. self.owner:GetName() .. "'")
+		self._private.bDidLogMissingGripProfile	= true
+	end
+
+	return oGripProfile
 end
 
 function Weapon:HasValidGripPoints()
