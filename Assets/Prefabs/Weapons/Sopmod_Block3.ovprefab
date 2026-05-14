@@ -5,8 +5,8 @@
                 <name>Sopmod_Block3</name>
                 <tag></tag>
                 <active>true</active>
-                <id>129</id>
-                <guid>15181633247600687285</guid>
+                <id>169</id>
+                <guid>13188869374912157591</guid>
                 <prefab_source>Prefabs/Weapons/Sopmod_Block3.ovprefab</prefab_source>
                 <prefab_node_guid>1118434742645547481</prefab_node_guid>
                 <parent>0</parent>
@@ -65,6 +65,21 @@
                         <data/>
                     </behaviour>
                     <behaviour>
+                        <type>Scripts/Weapon/WeaponGripProfile.lua</type>
+                        <data>
+                            <script_properties>
+                                <nMountOffsetX>-0.05</nMountOffsetX>
+                                <nMountOffsetY>0.04</nMountOffsetY>
+                                <nMountOffsetZ>-0.18</nMountOffsetZ>
+                                <nRightGripOffsetRoll>90</nRightGripOffsetRoll>
+                                <nRightShoulderAssistWeight>1.3</nRightShoulderAssistWeight>
+                                <nLeftShoulderAssistWeight>1.1</nLeftShoulderAssistWeight>
+                                <nRightHandRotationWeight>1</nRightHandRotationWeight>
+                                <nLeftHandRotationWeight>0.9</nLeftHandRotationWeight>
+                            </script_properties>
+                        </data>
+                    </behaviour>
+                    <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
                         <data/>
                     </behaviour>
@@ -74,24 +89,24 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>130</id>
-                <guid>13338944376255769666</guid>
+                <id>170</id>
+                <guid>1436816574522985967</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>18255031475517384145</prefab_node_guid>
-                <parent>129</parent>
+                <parent>169</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
                                 <x>-0.89999998</x>
-                                <y>-0.30000001</y>
-                                <z>0.2</z>
+                                <y>-0.15000001</y>
+                                <z>0.1</z>
                             </position>
                             <rotation>
-                                <x>0</x>
-                                <y>3.5527141e-15</y>
-                                <z>0</z>
+                                <x>6.3527471e-22</x>
+                                <y>3.5527077e-15</y>
+                                <z>-2.2569454e-36</z>
                                 <w>1</w>
                             </rotation>
                             <scale>
@@ -108,19 +123,19 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>131</id>
-                <guid>17183290775692970827</guid>
+                <id>171</id>
+                <guid>15427739396885007573</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5975057889999898857</prefab_node_guid>
-                <parent>129</parent>
+                <parent>169</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>0.51903701</x>
-                                <y>0.050734043</y>
-                                <z>-0.20440766</z>
+                                <x>0.5</x>
+                                <y>0</y>
+                                <z>0</z>
                             </position>
                             <rotation>
                                 <x>0</x>

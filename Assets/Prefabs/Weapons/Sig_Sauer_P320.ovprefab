@@ -66,6 +66,14 @@
                         <data/>
                     </behaviour>
                     <behaviour>
+                        <type>Scripts/Weapon/WeaponGripProfile.lua</type>
+                        <data>
+                            <script_properties>
+                                <nRightGripOffsetRoll>90</nRightGripOffsetRoll>
+                            </script_properties>
+                        </data>
+                    </behaviour>
+                    <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
                         <data/>
                     </behaviour>
