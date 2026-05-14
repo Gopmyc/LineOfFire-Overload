@@ -460,18 +460,7 @@
                     </behaviour>
                     <behaviour>
                         <type>Scripts/Weapon/WeaponGripProfile.lua</type>
-                        <data>
-                            <script_properties>
-                                <nMountOffsetX>-0.05</nMountOffsetX>
-                                <nMountOffsetY>0.04</nMountOffsetY>
-                                <nMountOffsetZ>-0.18</nMountOffsetZ>
-                                <nRightGripOffsetRoll>90</nRightGripOffsetRoll>
-                                <nRightShoulderAssistWeight>1.3</nRightShoulderAssistWeight>
-                                <nLeftShoulderAssistWeight>1.1</nLeftShoulderAssistWeight>
-                                <nRightHandRotationWeight>1</nRightHandRotationWeight>
-                                <nLeftHandRotationWeight>0.9</nLeftHandRotationWeight>
-                            </script_properties>
-                        </data>
+                        <data/>
                     </behaviour>
                     <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
@@ -498,10 +487,10 @@
                                 <z>0.1</z>
                             </position>
                             <rotation>
-                                <x>6.3527471e-22</x>
-                                <y>3.5527077e-15</y>
-                                <z>-2.2569454e-36</z>
-                                <w>1</w>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0.70710677</z>
+                                <w>0.70710677</w>
                             </rotation>
                             <scale>
                                 <x>0.99999988</x>
@@ -527,18 +516,18 @@
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>0.5</x>
-                                <y>0</y>
+                                <x>1.0253686</x>
+                                <y>-6.2628821e-08</y>
                                 <z>0</z>
                             </position>
                             <rotation>
                                 <x>0</x>
-                                <y>3.5527141e-15</y>
-                                <z>0</z>
-                                <w>1</w>
+                                <y>0</y>
+                                <z>-0.70710683</z>
+                                <w>0.70710671</w>
                             </rotation>
                             <scale>
-                                <x>0.99999988</x>
+                                <x>0.99999994</x>
                                 <y>1</y>
                                 <z>0.99999988</z>
                             </scale>

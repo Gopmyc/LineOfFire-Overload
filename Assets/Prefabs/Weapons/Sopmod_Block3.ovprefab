@@ -5,8 +5,8 @@
                 <name>Sopmod_Block3</name>
                 <tag></tag>
                 <active>true</active>
-                <id>169</id>
-                <guid>13188869374912157591</guid>
+                <id>179</id>
+                <guid>9865735763927845834</guid>
                 <prefab_source>Prefabs/Weapons/Sopmod_Block3.ovprefab</prefab_source>
                 <prefab_node_guid>1118434742645547481</prefab_node_guid>
                 <parent>0</parent>
@@ -66,18 +66,7 @@
                     </behaviour>
                     <behaviour>
                         <type>Scripts/Weapon/WeaponGripProfile.lua</type>
-                        <data>
-                            <script_properties>
-                                <nMountOffsetX>-0.05</nMountOffsetX>
-                                <nMountOffsetY>0.04</nMountOffsetY>
-                                <nMountOffsetZ>-0.18</nMountOffsetZ>
-                                <nRightGripOffsetRoll>90</nRightGripOffsetRoll>
-                                <nRightShoulderAssistWeight>1.3</nRightShoulderAssistWeight>
-                                <nLeftShoulderAssistWeight>1.1</nLeftShoulderAssistWeight>
-                                <nRightHandRotationWeight>1</nRightHandRotationWeight>
-                                <nLeftHandRotationWeight>0.9</nLeftHandRotationWeight>
-                            </script_properties>
-                        </data>
+                        <data/>
                     </behaviour>
                     <behaviour>
                         <type>Scripts/Utils/Class.lua</type>
@@ -89,11 +78,11 @@
                 <name>Hand_R</name>
                 <tag></tag>
                 <active>true</active>
-                <id>170</id>
-                <guid>1436816574522985967</guid>
+                <id>180</id>
+                <guid>12821144335318485466</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>18255031475517384145</prefab_node_guid>
-                <parent>169</parent>
+                <parent>179</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
@@ -104,10 +93,10 @@
                                 <z>0.1</z>
                             </position>
                             <rotation>
-                                <x>6.3527471e-22</x>
-                                <y>3.5527077e-15</y>
-                                <z>-2.2569454e-36</z>
-                                <w>1</w>
+                                <x>0</x>
+                                <y>0</y>
+                                <z>0.70710677</z>
+                                <w>0.70710677</w>
                             </rotation>
                             <scale>
                                 <x>0.99999988</x>
@@ -123,28 +112,28 @@
                 <name>Hand_L</name>
                 <tag></tag>
                 <active>true</active>
-                <id>171</id>
-                <guid>15427739396885007573</guid>
+                <id>181</id>
+                <guid>4402953576308654128</guid>
                 <prefab_source></prefab_source>
                 <prefab_node_guid>5975057889999898857</prefab_node_guid>
-                <parent>169</parent>
+                <parent>179</parent>
                 <components>
                     <component>
                         <type>class OvCore::ECS::Components::CTransform</type>
                         <data>
                             <position>
-                                <x>0.5</x>
-                                <y>0</y>
+                                <x>1.0253686</x>
+                                <y>-6.2628821e-08</y>
                                 <z>0</z>
                             </position>
                             <rotation>
                                 <x>0</x>
-                                <y>3.5527141e-15</y>
-                                <z>0</z>
-                                <w>1</w>
+                                <y>0</y>
+                                <z>-0.70710683</z>
+                                <w>0.70710671</w>
                             </rotation>
                             <scale>
-                                <x>0.99999988</x>
+                                <x>0.99999994</x>
                                 <y>1</y>
                                 <z>0.99999988</z>
                             </scale>
